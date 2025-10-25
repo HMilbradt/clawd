@@ -6,26 +6,38 @@ on:
       - main
 
 permissions:
-  contents: read # for checkout
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # to be able to publish a GitHub release
-      issues: write # to be able to comment on released issues
-      pull-requests: write # to be able to comment on released pull requests
-      id-token: write # to enable use of OIDC for npm provenance
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          cache: npm
-          node-version: lts/*
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
 
       - name: Install dependencies
-        run: npm clean-install
+        run: npm ci
+
+      - name: Run Biome linting
+        run: npm run lint
+
+      - name: Run Biome format check
+        run: npm run format
+
+      - name: Run tests
+        run: npm test
 
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
