@@ -1,6 +1,6 @@
 {
   "name": "clawd",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "description": "Claude Code CLI Wrapper for multi-phase project execution",
   "main": "src/index.js",
   "type": "module",
