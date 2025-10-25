@@ -30,6 +30,8 @@ In short: **Clawd lets you use your Claude Pro subscription to build entire proj
 - **Node.js** (v18 or higher with ESM support)
 - **Claude Code CLI** - Must be installed and available in your PATH ([installation guide](https://docs.claude.com/en/docs/claude-code))
 
+> **⚠️ IMPORTANT:** Clawd requires Claude Code to run with the `dangerously-skip-permissions` flag enabled. This allows Clawd to execute commands without manual approval prompts. **Use at your own risk** - only run Clawd in trusted environments and review the generated project plans before execution.
+
 ## Installation
 
 ```bash
