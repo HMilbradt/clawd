@@ -60,7 +60,7 @@ Clawd will:
 
 ### Interactive Mode (Default)
 
-Running `clawd` with no arguments starts the interactive Terminal User Interface:
+Clawd runs with an interactive Terminal User Interface by default:
 
 ```bash
 clawd
@@ -82,18 +82,18 @@ clawd
 - `Ctrl+C` - Exit immediately
 - Mouse wheel or arrow keys - Scroll through logs
 
-You can also provide a prompt upfront while staying in interactive mode:
+You can also provide a prompt upfront:
 
 ```bash
-clawd --interactive "Build a task management app"
+clawd "Build a task management app"
 ```
 
-### Standard Mode
+### Non-Interactive Mode
 
-Provide a prompt and let Clawd run autonomously:
+To disable the terminal UI and use standard output instead:
 
 ```bash
-clawd "Create a CLI tool for managing todos"
+clawd --non-interactive "Create a CLI tool for managing todos"
 ```
 
 Output appears in the console and is logged to `clawd.log`.
@@ -126,10 +126,10 @@ clawd --perpetual "Build a web scraper"
 - Execution continues indefinitely with expanded scope
 - Stop anytime with `Ctrl+C`
 
-Combine with interactive mode for full control:
+Combine with non-interactive mode if you prefer standard output:
 
 ```bash
-clawd --interactive --perpetual
+clawd --non-interactive --perpetual
 ```
 
 ## CLI Reference
@@ -144,32 +144,32 @@ clawd [prompt] [options]
 
 | Argument | Description |
 |----------|-------------|
-| `[prompt]` | Project description (optional - omit to start interactive mode) |
+| `[prompt]` | Project description (optional - you will be prompted at startup if omitted) |
 
 ### Options
 
 | Option | Shorthand | Description |
 |--------|-----------|-------------|
-| `--interactive` | `-i` | Enable Terminal User Interface with keyboard controls |
+| `--non-interactive` | | Disable terminal UI and use standard output mode |
 | `--perpetual` | `-p` | Continuously add features after completion |
 | `--help` | `-h` | Display help information |
 | `--version` | `-V` | Show version number |
 
 ### Examples
 
-**Start interactive mode:**
+**Start with interactive TUI (default):**
 ```bash
 clawd
 ```
 
-**Direct prompt execution:**
+**Direct prompt with TUI:**
 ```bash
 clawd "Build a URL shortener service"
 ```
 
-**Interactive mode with prompt:**
+**Non-interactive mode:**
 ```bash
-clawd -i "Create a markdown blog generator"
+clawd --non-interactive "Create a markdown blog generator"
 ```
 
 **Resume with continuation prompt:**
@@ -182,9 +182,9 @@ clawd "add user authentication"
 clawd -p "Build a weather dashboard"
 ```
 
-**Interactive + Perpetual:**
+**Non-interactive + Perpetual:**
 ```bash
-clawd -i -p "Create a recipe app"
+clawd --non-interactive -p "Create a recipe app"
 ```
 
 ## Project Plan Format

@@ -19,19 +19,17 @@ program
   .version('1.0.0');
 
 program
-  .argument('[prompt]', 'Project prompt for Claude (optional - will start in interactive mode if omitted)')
+  .argument('[prompt]', 'Project prompt for Claude (optional - will prompt you at startup if omitted)')
   .option('-p, --perpetual', 'Enable perpetual mode - continuously add new features after completion')
-  .option('-i, --interactive', 'Enable interactive mode - prompt while the program is running')
+  .option('--non-interactive', 'Disable terminal UI and run in standard output mode')
   .action(async (prompt, options) => {
     try {
-      // If no prompt provided, default to interactive mode
-      if (!prompt) {
-        options.interactive = true;
-      }
+      // Interactive mode is enabled by default (unless --non-interactive is specified)
+      const interactive = !options.nonInteractive;
 
       // Initialize TUI immediately if in interactive mode
       let tui = null;
-      if (options.interactive) {
+      if (interactive) {
         tui = initTUI();
         setLoggerTUI(tui);
         tui.showBanner('🤖 Clawd - Claude Code Orchestrator', 'info');
@@ -137,7 +135,7 @@ program
       }
 
       // Execute phases (TUI is already initialized, just pass the flag)
-      await executePhases(projectBrief, goal, options.perpetual, options.interactive);
+      await executePhases(projectBrief, goal, options.perpetual, interactive);
 
       if (!options.perpetual) {
         if (tui) {
