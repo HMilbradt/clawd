@@ -38,15 +38,17 @@ describe("CLI Action Routing", () => {
 		});
 
 		test("should import prompt actions from actions/prompts.js", async () => {
-			const { listPromptsAction, copyPromptAction } =
-				await import("./actions/prompts.js");
+			const { listPromptsAction, copyPromptAction } = await import(
+				"./actions/prompts.js"
+			);
 			expect(listPromptsAction).toBe(mockListPromptsAction);
 			expect(copyPromptAction).toBe(mockCopyPromptAction);
 		});
 
 		test("should import plugin actions from actions/plugins.js", async () => {
-			const { listPluginsAction, createPluginAction } =
-				await import("./actions/plugins.js");
+			const { listPluginsAction, createPluginAction } = await import(
+				"./actions/plugins.js"
+			);
 			expect(listPluginsAction).toBe(mockListPluginsAction);
 			expect(createPluginAction).toBe(mockCreatePluginAction);
 		});

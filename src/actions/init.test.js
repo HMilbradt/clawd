@@ -148,7 +148,9 @@ describe("initAction", () => {
 				await initAction();
 
 				// Check success message
-				expect(consoleLogOutput).toContain("\n✓ Initialized .clawd/ directory\n");
+				expect(consoleLogOutput).toContain(
+					"\n✓ Initialized .clawd/ directory\n",
+				);
 				expect(consoleLogOutput).toContain("  Created:");
 				expect(consoleLogOutput).toContain("    .clawd/prompts/");
 				expect(consoleLogOutput).toContain("    .clawd/plugins/");
@@ -187,7 +189,9 @@ describe("initAction", () => {
 			process.cwd = vi.fn(() => testDir);
 
 			try {
-				await expect(initAction()).rejects.toThrow("Process exited with code 1");
+				await expect(initAction()).rejects.toThrow(
+					"Process exited with code 1",
+				);
 
 				// Verify error was logged
 				expect(consoleErrorOutput.length).toBeGreaterThan(0);
@@ -217,7 +221,9 @@ describe("initAction", () => {
 			process.cwd = vi.fn(() => testDir);
 
 			try {
-				await expect(initAction()).rejects.toThrow("Process exited with code 1");
+				await expect(initAction()).rejects.toThrow(
+					"Process exited with code 1",
+				);
 
 				// Verify chalk.red was used for error message
 				expect(chalk.red).toHaveBeenCalledWith("\n✗ Error: Disk full\n");

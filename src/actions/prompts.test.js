@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // Mock chalk
 const mockChalk = {
@@ -54,9 +47,7 @@ describe("Prompt Actions", () => {
 		originalConsoleLog = console.log;
 		originalConsoleError = console.error;
 		console.log = vi.fn((...args) => consoleLogOutput.push(args.join(" ")));
-		console.error = vi.fn((...args) =>
-			consoleErrorOutput.push(args.join(" ")),
-		);
+		console.error = vi.fn((...args) => consoleErrorOutput.push(args.join(" ")));
 
 		// Mock process.exit
 		originalProcessExit = process.exit;

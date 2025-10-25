@@ -1,1 +1,1 @@
-import './cli.js'
+import "./cli.js";

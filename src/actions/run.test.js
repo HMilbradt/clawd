@@ -1,20 +1,16 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // Mock all dependencies
 const mockChalk = {
 	bold: {
 		blue: vi.fn((text) => text),
 	},
-	green: Object.assign(vi.fn((text) => text), {
-		bold: vi.fn((text) => text),
-	}),
+	green: Object.assign(
+		vi.fn((text) => text),
+		{
+			bold: vi.fn((text) => text),
+		},
+	),
 	yellow: vi.fn((text) => text),
 	cyan: vi.fn((text) => text),
 	red: vi.fn((text) => text),
@@ -102,9 +98,7 @@ describe("runAction", () => {
 		originalConsoleLog = console.log;
 		originalConsoleError = console.error;
 		console.log = vi.fn((...args) => consoleLogOutput.push(args.join(" ")));
-		console.error = vi.fn((...args) =>
-			consoleErrorOutput.push(args.join(" ")),
-		);
+		console.error = vi.fn((...args) => consoleErrorOutput.push(args.join(" ")));
 
 		// Mock process.exit
 		originalProcessExit = process.exit;
@@ -161,9 +155,9 @@ describe("runAction", () => {
 		});
 
 		test("should require prompt in non-interactive mode", async () => {
-			await expect(runAction(undefined, { nonInteractive: true })).rejects.toThrow(
-				"Process exited with code 1",
-			);
+			await expect(
+				runAction(undefined, { nonInteractive: true }),
+			).rejects.toThrow("Process exited with code 1");
 
 			expect(consoleErrorOutput).toContain("\n❌ Error: Prompt is required\n");
 			expect(processExitCode).toBe(1);
@@ -228,7 +222,10 @@ describe("runAction", () => {
 			expect(mockTUI.prompt).toHaveBeenCalledWith(
 				"What would you like to build?",
 			);
-			expect(mockPlanInit).toHaveBeenCalledWith("User input", expect.any(Object));
+			expect(mockPlanInit).toHaveBeenCalledWith(
+				"User input",
+				expect.any(Object),
+			);
 		});
 
 		test("should exit if user provides empty prompt", async () => {
@@ -241,9 +238,9 @@ describe("runAction", () => {
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
 
-			await expect(runAction(undefined, { nonInteractive: false })).rejects.toThrow(
-				"Process exited with code 1",
-			);
+			await expect(
+				runAction(undefined, { nonInteractive: false }),
+			).rejects.toThrow("Process exited with code 1");
 
 			expect(mockTUI.log).toHaveBeenCalledWith(
 				"No prompt provided. Exiting.",
@@ -286,9 +283,9 @@ describe("runAction", () => {
 			const error = new Error("Test error");
 			mockLoadAdapter.mockRejectedValue(error);
 
-			await expect(
-				runAction("test", { nonInteractive: true }),
-			).rejects.toThrow("Process exited with code 1");
+			await expect(runAction("test", { nonInteractive: true })).rejects.toThrow(
+				"Process exited with code 1",
+			);
 
 			expect(mockLogger.error).toHaveBeenCalledWith("Error: Test error");
 			expect(consoleErrorOutput).toContain("\n❌ Error: Test error\n");
@@ -300,9 +297,9 @@ describe("runAction", () => {
 			error.stack = "Error stack trace";
 			mockLoadAdapter.mockRejectedValue(error);
 
-			await expect(
-				runAction("test", { nonInteractive: true }),
-			).rejects.toThrow("Process exited with code 1");
+			await expect(runAction("test", { nonInteractive: true })).rejects.toThrow(
+				"Process exited with code 1",
+			);
 
 			expect(mockLogger.error).toHaveBeenCalledWith("Error stack trace");
 		});

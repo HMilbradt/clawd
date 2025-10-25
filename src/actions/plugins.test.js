@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -46,8 +39,7 @@ describe("Plugin Actions", () => {
 
 		// Import modules
 		chalk = (await import("chalk")).default;
-		({ listPluginsAction, createPluginAction } =
-			await import("./plugins.js"));
+		({ listPluginsAction, createPluginAction } = await import("./plugins.js"));
 
 		// Mock console methods
 		consoleLogOutput = [];
@@ -55,9 +47,7 @@ describe("Plugin Actions", () => {
 		originalConsoleLog = console.log;
 		originalConsoleError = console.error;
 		console.log = vi.fn((...args) => consoleLogOutput.push(args.join(" ")));
-		console.error = vi.fn((...args) =>
-			consoleErrorOutput.push(args.join(" ")),
-		);
+		console.error = vi.fn((...args) => consoleErrorOutput.push(args.join(" ")));
 
 		// Mock process.exit
 		originalProcessExit = process.exit;
@@ -164,7 +154,9 @@ describe("Plugin Actions", () => {
 				expect(content).not.toContain("{{PLUGIN_NAME}}");
 
 				// Verify success messages
-				expect(consoleLogOutput).toContain(`\n✓ Created plugin: ${pluginPath}\n`);
+				expect(consoleLogOutput).toContain(
+					`\n✓ Created plugin: ${pluginPath}\n`,
+				);
 				expect(consoleLogOutput).toContain(
 					"Edit the file to customize hook behavior.\n",
 				);
@@ -254,9 +246,7 @@ describe("Plugin Actions", () => {
 
 		test("should handle errors and exit with code 1", async () => {
 			const originalReadFile = fs.readFile;
-			fs.readFile = vi
-				.fn()
-				.mockRejectedValue(new Error("Template not found"));
+			fs.readFile = vi.fn().mockRejectedValue(new Error("Template not found"));
 
 			const testDir = path.join(process.cwd(), "test-create-plugin-error");
 			const originalCwd = process.cwd;
@@ -282,9 +272,7 @@ describe("Plugin Actions", () => {
 
 		test("should handle file write errors", async () => {
 			const originalWriteFile = fs.writeFile;
-			fs.writeFile = vi
-				.fn()
-				.mockRejectedValue(new Error("Permission denied"));
+			fs.writeFile = vi.fn().mockRejectedValue(new Error("Permission denied"));
 
 			const testDir = path.join(
 				process.cwd(),

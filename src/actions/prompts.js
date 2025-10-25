@@ -11,9 +11,7 @@ export async function listPromptsAction() {
 	for (const name of prompts.builtIn) {
 		const isOverridden = prompts.userOverrides.includes(name);
 		if (isOverridden) {
-			console.log(
-				chalk.yellow(`  • ${name} (overridden in .clawd/prompts/)`),
-			);
+			console.log(chalk.yellow(`  • ${name} (overridden in .clawd/prompts/)`));
 		} else {
 			console.log(chalk.white(`  • ${name}`));
 		}
@@ -37,9 +35,7 @@ export async function listPromptsAction() {
 export async function copyPromptAction(name, options) {
 	if (options.all) {
 		const prompts = await listPrompts();
-		console.log(
-			chalk.blue(`\nCopying ${prompts.builtIn.length} prompts...\n`),
-		);
+		console.log(chalk.blue(`\nCopying ${prompts.builtIn.length} prompts...\n`));
 		for (const promptName of prompts.builtIn) {
 			try {
 				await copyPromptToUser(promptName);
