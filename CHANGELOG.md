@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/HMilbradt/clawd/compare/v1.0.0...v1.0.1) (2025-10-25)
+
+
+### Bug Fixes
+
+* revert prior changes and enable build checks ([c5372d6](https://github.com/HMilbradt/clawd/commit/c5372d61dadd0d8cfecb1ae19dc37f21dad720f6))
+
 # 1.0.0 (2025-10-25)
 
 
