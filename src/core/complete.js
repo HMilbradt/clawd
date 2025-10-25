@@ -139,8 +139,8 @@ async function addTasksToPlan(newTasks, planObj, cwd) {
 	planObj.tasks.push(...newTasks);
 
 	// Update the plan file
-	const fs = await import("fs/promises");
-	const path = await import("path");
+	const fs = await import("node:fs/promises");
+	const path = await import("node:path");
 	const planPath = path.join(cwd, "PROJECT_PLAN.md");
 
 	let content = await fs.readFile(planPath, "utf-8");

@@ -16,7 +16,7 @@ export class LLMAdapter {
 	 * @param {boolean} captureOutput - Whether to capture and return output
 	 * @returns {Promise<string>} - The LLM's response
 	 */
-	async execute(prompt, captureOutput = true) {
+	async execute(_prompt, _captureOutput = true) {
 		throw new Error("execute() must be implemented by adapter");
 	}
 
@@ -26,7 +26,7 @@ export class LLMAdapter {
 	 * @param {Object} tui - TUI instance for output streaming
 	 * @returns {Promise<{exitCode: number, output: string}>}
 	 */
-	async executeWithTUI(prompt, tui) {
+	async executeWithTUI(_prompt, _tui) {
 		throw new Error("executeWithTUI() must be implemented by adapter");
 	}
 

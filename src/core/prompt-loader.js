@@ -1,6 +1,6 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import logger from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,19 +24,26 @@ export async function loadPrompt(
 	// Try user override first (.clawd/prompts/)
 	const userPromptPath = path.join(cwd, ".clawd", "prompts", fileName);
 	let template = null;
-	let usedUserOverride = false;
+	let _usedUserOverride = false;
 
 	try {
 		template = await fs.readFile(userPromptPath, "utf-8");
-		usedUserOverride = true;
+		_usedUserOverride = true;
 		logger.debug(`Using user override prompt: ${fileName}`);
 	} catch {
 		// User override doesn't exist, use built-in
-		const builtinPromptPath = path.join(__dirname, "..", "prompts", fileName);
+		const builtinPromptPath = path.join(
+			__dirname,
+			"..",
+			"..",
+			"prompts",
+			fileName,
+		);
 		try {
 			template = await fs.readFile(builtinPromptPath, "utf-8");
 			logger.debug(`Using built-in prompt: ${fileName}`);
 		} catch (error) {
+			logger.error(`Error reading builtin prompt: ${error.message}`);
 			throw new Error(
 				`Prompt not found: ${promptName} (checked ${userPromptPath} and ${builtinPromptPath})`,
 			);
@@ -58,7 +65,7 @@ export async function loadPrompt(
  * @returns {Promise<Object>} - { builtIn: string[], userOverrides: string[] }
  */
 export async function listPrompts(cwd = process.cwd()) {
-	const builtinPromptsDir = path.join(__dirname, "..", "prompts");
+	const builtinPromptsDir = path.join(__dirname, "..", "..", "prompts");
 	const userPromptsDir = path.join(cwd, ".clawd", "prompts");
 
 	// Get built-in prompts
@@ -88,7 +95,13 @@ export async function listPrompts(cwd = process.cwd()) {
  */
 export async function copyPromptToUser(promptName, cwd = process.cwd()) {
 	const fileName = `${promptName}.md`;
-	const builtinPromptPath = path.join(__dirname, "..", "prompts", fileName);
+	const builtinPromptPath = path.join(
+		__dirname,
+		"..",
+		"..",
+		"prompts",
+		fileName,
+	);
 	const userPromptsDir = path.join(cwd, ".clawd", "prompts");
 	const userPromptPath = path.join(userPromptsDir, fileName);
 

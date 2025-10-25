@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { getAdapter } from "../adapters/loader.js";
 import { buildPlanContext } from "../plugin-system/context.js";
 import hookManager from "../plugin-system/hooks.js";
@@ -163,13 +163,13 @@ export async function markComplete(task, cwd = process.cwd()) {
 
 /**
  * Add feedback to a task (for incomplete tasks)
- * This doesn't modify the task object but logs the feedback
+ * Stores feedback on the task object so it can be used in retry attempts
  * @param {Object} task - Task to add feedback to
  * @param {string} feedback - Feedback message
  */
 export function addFeedback(task, feedback) {
 	logger.info(`Task feedback for "${task.description}": ${feedback}`);
-	// Could extend this to store feedback in task object if needed
+	task.feedback = feedback;
 }
 
 /**
@@ -181,7 +181,7 @@ async function updatePlanFile(cwd = process.cwd()) {
 	// the exact format and only update checkboxes
 	// For now, we'll reload and rewrite the plan
 	const planPath = path.join(cwd, PLAN_FILE);
-	const content = await fs.readFile(planPath, "utf-8");
+	const _content = await fs.readFile(planPath, "utf-8");
 
 	// We need the current task statuses to update checkboxes
 	// This requires access to the plan object, so we'll need to pass it

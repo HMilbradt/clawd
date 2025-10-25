@@ -16,7 +16,7 @@ import {
 
 /**
  * Execute a single task using Claude
- * @param {Object} task - Task object with { phase, description, done }
+ * @param {Object} task - Task object with { phase, description, done, feedback }
  * @param {string} projectBrief - Project brief for context
  * @param {string} goal - Project goal for context
  * @param {Object} options - Execution options
@@ -32,12 +32,13 @@ export async function executeTask(
 ) {
 	logger.info(`Executing task: ${task.description}`);
 
-	// Build execution prompt
+	// Build execution prompt with optional feedback from previous attempt
 	const prompt = await loadPrompt("exec-task", {
 		projectBrief,
 		goal,
 		phaseName: task.phase,
 		stepDescription: task.description,
+		feedback: task.feedback || "",
 	});
 
 	// Execute pre:exec hook
@@ -65,7 +66,7 @@ export async function executeTask(
  * @param {Object} tui - TUI instance (optional)
  * @returns {Promise<Object>} - { exitCode, output }
  */
-async function executeWithRetry(prompt, options = {}, tui = null) {
+async function executeWithRetry(prompt, _options = {}, tui = null) {
 	let attemptCount = 0;
 	const maxAttempts = 100;
 	const adapter = getAdapter();

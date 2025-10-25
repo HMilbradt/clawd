@@ -362,7 +362,7 @@ export class TUI {
 	 * @returns {string} - Clean string
 	 */
 	stripAnsi(str) {
-		// eslint-disable-next-line no-control-regex
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching ANSI escape codes
 		return str.replace(/\x1b\[[0-9;]*m/g, "");
 	}
 
@@ -397,7 +397,7 @@ export class TUI {
 				vi: true,
 			});
 
-			promptBox.input(message, "", (err, value) => {
+			promptBox.input(message, "", (_err, value) => {
 				resolve(value || "");
 			});
 
@@ -445,7 +445,7 @@ export class TUI {
 			list.setItems(items);
 
 			// Handle selection
-			list.on("select", (item, index) => {
+			list.on("select", (_item, index) => {
 				const selectedValue = choices[index].value;
 				list.detach();
 				this.screen.render();

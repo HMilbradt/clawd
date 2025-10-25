@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 import logger from "../core/logger.js";
 import { LLMAdapter } from "./base.js";
 
@@ -19,7 +19,7 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 	 * @param {boolean} captureOutput - Whether to capture and return output
 	 * @returns {Promise<string>} - Claude's response
 	 */
-	async execute(prompt, captureOutput = true) {
+	async execute(prompt, _captureOutput = true) {
 		return new Promise((resolve, reject) => {
 			const claude = spawn(this.command, [...this.args, "-p", prompt], {
 				stdio: ["pipe", "pipe", "pipe"],

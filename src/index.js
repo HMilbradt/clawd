@@ -2,19 +2,16 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { loadAdapter } from "./adapters/loader.js";
 import * as complete from "./core/complete.js";
-import * as eval from "./core/eval.js";
+import * as evaluate from "./core/eval.js";
 import * as exec from "./core/exec.js";
 import logger, { setLoggerTUI } from "./core/logger.js";
 import * as plan from "./core/plan.js";
-import {
-	copyPromptToUser,
-	listPrompts,
-} from "./core/prompt-loader.js";
-import { getTUI, initTUI } from "./core/tui.js";
+import { copyPromptToUser, listPrompts } from "./core/prompt-loader.js";
+import { initTUI } from "./core/tui.js";
 import { listPlugins, loadPlugins } from "./plugin-system/loader.js";
 
 const program = new Command();
@@ -90,18 +87,16 @@ promptsCmd
 					await copyPromptToUser(promptName);
 					console.log(chalk.green(`✓ Copied ${promptName}`));
 				} catch (error) {
-					console.log(chalk.red(`✗ Failed to copy ${promptName}: ${error.message}`));
+					console.log(
+						chalk.red(`✗ Failed to copy ${promptName}: ${error.message}`),
+					);
 				}
 			}
-			console.log(
-				chalk.green("\n✓ All prompts copied to .clawd/prompts/\n"),
-			);
+			console.log(chalk.green("\n✓ All prompts copied to .clawd/prompts/\n"));
 		} else {
 			try {
 				const filePath = await copyPromptToUser(name);
-				console.log(
-					chalk.green(`\n✓ Copied ${name} to ${filePath}\n`),
-				);
+				console.log(chalk.green(`\n✓ Copied ${name} to ${filePath}\n`));
 			} catch (error) {
 				console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
 				process.exit(1);
@@ -160,9 +155,7 @@ pluginsCmd
 			await fs.writeFile(pluginPath, template);
 
 			console.log(chalk.green(`\n✓ Created plugin: ${pluginPath}\n`));
-			console.log(
-				chalk.white("Edit the file to customize hook behavior.\n"),
-			);
+			console.log(chalk.white("Edit the file to customize hook behavior.\n"));
 		} catch (error) {
 			console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
 			process.exit(1);
@@ -312,9 +305,7 @@ async function runMain(userPrompt, options) {
 					if (tui) {
 						tui.log("🔄 Perpetual mode: continuing...", "info");
 					} else {
-						console.log(
-							chalk.magenta("\n🔄 Perpetual mode: continuing...\n"),
-						);
+						console.log(chalk.magenta("\n🔄 Perpetual mode: continuing...\n"));
 					}
 
 					// Reload plan to get new tasks
@@ -327,9 +318,7 @@ async function runMain(userPrompt, options) {
 				if (tui) {
 					tui.log("✓ New tasks added to plan, continuing...", "success");
 				} else {
-					console.log(
-						chalk.green("✓ New tasks added to plan, continuing..."),
-					);
+					console.log(chalk.green("✓ New tasks added to plan, continuing..."));
 				}
 
 				const reloadedPlan = await plan.load();
@@ -350,7 +339,7 @@ async function runMain(userPrompt, options) {
 			}
 
 			// Execute task
-			const execResult = await exec.executeTask(
+			const _execResult = await exec.executeTask(
 				currentTask,
 				planObj.brief,
 				planObj.goal,
@@ -365,7 +354,7 @@ async function runMain(userPrompt, options) {
 				console.log(chalk.yellow("Evaluating task..."));
 			}
 
-			const evalResult = await eval.evaluateTask(
+			const evalResult = await evaluate.evaluateTask(
 				currentTask,
 				planObj.brief,
 				planObj.goal,
@@ -386,15 +375,10 @@ async function runMain(userPrompt, options) {
 				plan.addFeedback(currentTask, evalResult.feedback);
 
 				if (tui) {
-					tui.log(
-						`Task incomplete: ${evalResult.feedback}`,
-						"warn",
-					);
+					tui.log(`Task incomplete: ${evalResult.feedback}`, "warn");
 					tui.log("Retrying task...", "info");
 				} else {
-					console.log(
-						chalk.yellow(`Task incomplete: ${evalResult.feedback}`),
-					);
+					console.log(chalk.yellow(`Task incomplete: ${evalResult.feedback}`));
 					console.log(chalk.yellow("Retrying task..."));
 				}
 
