@@ -2,19 +2,21 @@
 
 **Clawd** is an intelligent orchestrator for the Claude Code CLI that transforms complex development tasks into automated, multi-phase project execution. It generates comprehensive project plans and executes them step-by-step, tracking progress and adapting along the way.
 
+> **⚠️ IMPORTANT:** Clawd requires Claude Code to run with the `dangerously-skip-permissions` flag enabled. This allows Clawd to execute commands without manual approval prompts. **Use at your own risk** - only run Clawd in trusted environments and review the generated project plans before execution.
+
 ## Why Clawd?
 
 If you're a Claude Pro subscriber using Claude Code, you've likely encountered these limitations:
 
-- **💸 Claude API Not Included** - The Claude API requires separate payment and usage-based billing, even with a Pro subscription. Clawd leverages your existing Claude Pro subscription through Claude Code, so you're not paying twice.
+- **🤖 Automation** - Clawd automates the entire project execution process, from planning to completion.  You can set it and forget it, or watch it work in interactive mode.
 
-- **⏹️ Claude Code Eventually Stops** - Claude Code has context limits and will pause execution, requiring you to manually reprompt it to continue. This interrupts your flow and requires constant supervision.
+- **⏹️ Session limits and reprompting** - Claude Code will stop working if you hit the session limit, or if it decides it's finished it's task.  This requires manual intervention and loses valuable time.
+
+- **💸 Claude API Not Included** - The Claude API requires separate payment and usage-based billing, even with a Pro subscription. Clawd leverages your existing Claude Pro subscription through Claude Code, so you're not paying twice.
 
 - **📝 Incomplete Task Execution** - Claude Code often completes part of a task but doesn't see it through to the end. You give it a complex request, it makes progress, then stops before finishing—leaving you to figure out what's left and reprompt.
 
-- **🚀 Why Not Automate It?** - Clawd solves all of this by automatically breaking down your project into phases, executing each step, tracking completion, and reprompting as needed—all without your intervention. Set it and forget it (or watch it work in interactive mode).
-
-In short: **Clawd lets you use your Claude Pro subscription to build entire projects autonomously**, without hitting API limits, manually reprompting, or babysitting incomplete executions.
+In short: **Clawd lets you use your Claude Pro subscription to build entire projects autonomously**, avoiding session limits, manually reprompting, or babysitting incomplete executions.
 
 ## Features
 
@@ -32,7 +34,6 @@ In short: **Clawd lets you use your Claude Pro subscription to build entire proj
 - **Node.js** (v18 or higher with ESM support)
 - **Claude Code CLI** - Must be installed and available in your PATH ([installation guide](https://docs.claude.com/en/docs/claude-code))
 
-> **⚠️ IMPORTANT:** Clawd requires Claude Code to run with the `dangerously-skip-permissions` flag enabled. This allows Clawd to execute commands without manual approval prompts. **Use at your own risk** - only run Clawd in trusted environments and review the generated project plans before execution.
 
 ## Installation
 
@@ -48,13 +49,13 @@ The simplest way to use Clawd is to run it without any arguments:
 clawd
 ```
 
-This starts interactive mode where you'll be prompted for what you want to build. Alternatively, provide your project description directly:
+This starts interactive mode where you'll be prompted for what you want to build. Alternatively, you can run in non-interactive mode by providing your project description:
 
 ```bash
-clawd "Build a REST API with Express and PostgreSQL"
+clawd --non-interactive "Build a REST API with Express and PostgreSQL"
 ```
 
-Clawd will:
+In both modes, Clawd will:
 1. Generate a `PROJECT_PLAN.md` with phases and tasks
 2. Execute each task using Claude Code
 3. Evaluate task completion
@@ -70,39 +71,23 @@ Clawd follows a **Plan → Exec → Eval → Complete** workflow:
 3. **Eval** - Evaluate if task was completed successfully
 4. **Complete** - When all tasks are done, evaluate if project is truly complete
 
-Each step is hookable via the plugin system, allowing you to customize Clawd's behavior.
+Each step is hookable via the plugin system, allowing you to customize Clawd's behavior.  Each prompt is also customizable via the prompt system, allowing you to override any prompt to customize Claude's behavior.
 
 ## Core Concepts
 
-### Project Plans
+### Project Plan
 
-Plans are stored in `PROJECT_PLAN.md`:
+Every Clawd project has a project plan stored in the current working directory as `PROJECT_PLAN.md`.  This file is used to track the progress of the project and is updated as tasks are completed.  
 
-```markdown
-# Project Brief
-[Description of what needs to be built]
-
-# Goal
-[Clear end goal statement]
-
-# Phases
-
-## Phase 1: Setup
-- [ ] Initialize project structure
-- [ ] Install dependencies
-- [ ] Configure environment
-
-## Phase 2: Implementation
-- [ ] Create database schema
-- [ ] Build API endpoints
-- [ ] Implement business logic
-```
-
-As tasks complete, checkboxes are automatically marked: `- [x] Completed task`
+When running Clawd in a new directory, Clawd will automatically create a project plan for you based on the prompt you provided.  When running Clawd in an existing directory, Clawd will load the project plan from the current working directory.
 
 ### Plugins
 
-Create plugins in `.clawd/plugins/` to hook into Clawd's lifecycle:
+To customize Clawd's behavior, you can create plugins in `.clawd/plugins/` to hook into Clawd's lifecycle.  Create plugins in `.clawd/plugins/` to hook into Clawd's lifecycle:
+
+```bash
+clawd plugins create my-plugin
+```
 
 ```javascript
 // .clawd/plugins/my-plugin.js
@@ -131,10 +116,24 @@ Override any prompt by creating `.clawd/prompts/<name>.md`:
 ```bash
 # Copy a prompt to customize it
 clawd prompts copy plan-init
-
-# Edit .clawd/prompts/plan-init.md
-# Your changes will be used instead of the built-in prompt
 ```
+
+> **Important:** Clawd currently expects the plan-init file to be formatted as follows:
+
+```markdown
+# Project Brief
+[Brief description of what needs to be built]
+
+# Goal
+[Clear statement of the end goal]
+
+# Phases
+## Phase 1: [Phase Name]
+- [ ] [Specific actionable step with deliverable]
+- [ ] [Specific actionable step with deliverable]
+```
+
+It's crucial for Clawd to be able to parse the plan-init file correctly, so that it can generate the project plan correctly and execute steps properly.  This will be improved in the future, but for now, please follow the format above.
 
 ## CLI Reference
 
