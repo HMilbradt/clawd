@@ -1,4 +1,9 @@
 import blessed from "blessed";
+import { ConsoleComponent } from "./tui/console.js";
+import { HeaderComponent } from "./tui/header.js";
+import { HelpModalComponent } from "./tui/help-modal.js";
+import { HotkeyBarComponent } from "./tui/hotkey-bar.js";
+import { StatsBarComponent } from "./tui/stats-bar.js";
 
 /**
  * Terminal UI manager for clawd
@@ -7,19 +12,19 @@ import blessed from "blessed";
 export class TUI {
 	constructor() {
 		this.screen = null;
-		this.headerBox = null;
-		this.spinnerBox = null;
-		this.logBox = null;
+		this.header = null;
+		this.statsBar = null;
+		this.console = null;
+		this.hotkeyBar = null;
+		this.helpModal = null;
 		this.statusBar = null;
-		this.commandBar = null;
 		this.promptCountBox = null;
 		this.loadingIndicator = null;
 		this.isInitialized = false;
 		this.isPaused = false;
 		this.cancelRequested = false;
-		this.spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-		this.spinnerIndex = 0;
-		this.spinnerInterval = null;
+		this.perpetualMode = false;
+		this.queuedPrompts = [];
 	}
 
 	/**
@@ -35,89 +40,22 @@ export class TUI {
 			fullUnicode: true,
 		});
 
-		// Header with title
-		this.headerBox = blessed.box({
-			parent: this.screen,
-			top: 0,
-			left: 0,
-			width: "100%-12",
-			height: 3,
-			content:
-				"{center}{bold}{cyan-fg}CLAWD - Claude Code Orchestrator{/cyan-fg}{/bold}{/center}",
-			tags: true,
-			style: {
-				fg: "cyan",
-				bg: "black",
-			},
-			border: {
-				type: "line",
-				fg: "cyan",
-			},
-		});
+		// Create components
+		this.header = new HeaderComponent(this.screen);
+		this.header.create();
 
-		// Animated spinner box (top right)
-		this.spinnerBox = blessed.box({
-			parent: this.screen,
-			top: 0,
-			right: 0,
-			width: 12,
-			height: 3,
-			content: "",
-			tags: true,
-			align: "center",
-			valign: "middle",
-			style: {
-				fg: "green",
-				bg: "black",
-				bold: true,
-			},
-			border: {
-				type: "line",
-				fg: "green",
-			},
-		});
+		this.statsBar = new StatsBarComponent(this.screen);
+		this.statsBar.create();
 
-		// Main log area (scrollable) - more whitespace with padding
-		this.logBox = blessed.log({
-			parent: this.screen,
-			top: 4,
-			left: 0,
-			width: "100%",
-			height: "100%-10",
-			tags: true,
-			scrollable: true,
-			alwaysScroll: true,
-			scrollbar: {
-				ch: "█",
-				inverse: true,
-			},
-			mouse: true,
-			keys: true,
-			vi: true,
-			padding: {
-				left: 1,
-				right: 1,
-				top: 1,
-				bottom: 1,
-			},
-			style: {
-				fg: "white",
-				bg: "black",
-				scrollbar: {
-					bg: "blue",
-				},
-			},
-			border: {
-				type: "line",
-			},
-		});
+		this.console = new ConsoleComponent(this.screen);
+		this.console.create();
 
-		// Status bar at bottom (showing phase/iteration)
+		// Status bar at bottom (showing current step) - positioned above hotkey bar
 		this.statusBar = blessed.box({
 			parent: this.screen,
 			bottom: 3,
 			left: 0,
-			width: "100%-20",
+			width: "100%-12",
 			height: 3,
 			content: "",
 			tags: true,
@@ -134,50 +72,33 @@ export class TUI {
 			},
 		});
 
-		// Prompt counter box (next to status bar)
+		// Prompt counter box (next to status bar) - smaller
 		this.promptCountBox = blessed.box({
 			parent: this.screen,
 			bottom: 3,
 			right: 0,
-			width: 20,
+			width: 11,
 			height: 3,
-			content: "",
+			content: "📬 0",
 			tags: true,
-			align: "center",
 			valign: "middle",
-			style: {
-				fg: "black",
-				bg: "yellow",
-				bold: true,
-			},
-			border: {
-				type: "line",
-				fg: "yellow",
-			},
-		});
-
-		// Command bar at very bottom (different color)
-		this.commandBar = blessed.box({
-			parent: this.screen,
-			bottom: 0,
-			left: 0,
-			width: "100%",
-			height: 3,
-			content: "",
-			tags: true,
 			padding: {
 				left: 1,
 			},
 			style: {
-				fg: "black",
-				bg: "magenta",
-				bold: true,
+				fg: "white",
+				bg: "green",
 			},
 			border: {
 				type: "line",
-				fg: "magenta",
+				fg: "green",
 			},
 		});
+
+		this.hotkeyBar = new HotkeyBarComponent(this.screen);
+		this.hotkeyBar.create();
+
+		this.helpModal = new HelpModalComponent(this.screen);
 
 		// Handle Ctrl+C
 		this.screen.key(["C-c"], () => {
@@ -185,43 +106,68 @@ export class TUI {
 			process.exit(0);
 		});
 
-		// Handle mouse wheel scrolling
-		this.logBox.on("wheeldown", () => {
-			this.logBox.scroll(3);
-			this.screen.render();
+		// Handle ? for help
+		this.screen.key(["?"], async () => {
+			await this.helpModal.show();
 		});
 
-		this.logBox.on("wheelup", () => {
-			this.logBox.scroll(-3);
-			this.screen.render();
+		// Handle p for prompt
+		this.screen.key(["p"], async () => {
+			await this.showPromptModal();
 		});
 
-		// Start spinner animation
-		this.startSpinner();
+		// Handle space for pause
+		this.screen.key(["space"], async () => {
+			await this.handlePause();
+		});
+
+		// Handle escape for cancel
+		this.screen.key(["escape"], () => {
+			this.requestCancel();
+			this.log("⚠️  Cancel requested", "warn");
+		});
+
+		// Handle m for perpetual mode toggle
+		this.screen.key(["m"], () => {
+			this.togglePerpetualMode();
+		});
 
 		this.isInitialized = true;
 		this.screen.render();
 	}
 
 	/**
-	 * Start the animated spinner
+	 * Start runtime tracking
 	 */
-	startSpinner() {
-		this.spinnerInterval = setInterval(() => {
-			const frame = this.spinnerFrames[this.spinnerIndex];
-			this.spinnerBox.setContent(`{green-fg}{bold}${frame}{/bold}{/green-fg}`);
-			this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
-			this.screen.render();
-		}, 80);
+	startRuntime() {
+		if (this.statsBar) {
+			this.statsBar.startRuntime();
+		}
 	}
 
 	/**
-	 * Stop the animated spinner
+	 * Update the header with current phase
+	 * @param {string} phase - Current phase name
 	 */
-	stopSpinner() {
-		if (this.spinnerInterval) {
-			clearInterval(this.spinnerInterval);
-			this.spinnerInterval = null;
+	updateHeader(phase) {
+		if (this.header) {
+			this.header.updatePhase(phase);
+		}
+	}
+
+	/**
+	 * Update stats bar
+	 * @param {Object} stats - Stats object with iteration, stepsComplete, totalSteps
+	 */
+	updateStats(stats) {
+		if (this.statsBar) {
+			if (stats.iteration !== undefined) {
+				this.statsBar.setIteration(stats.iteration);
+			}
+			if (stats.stepsComplete !== undefined && stats.totalSteps !== undefined) {
+				this.statsBar.setStepProgress(stats.stepsComplete, stats.totalSteps);
+			}
+			this.statsBar.updateDisplay();
 		}
 	}
 
@@ -236,61 +182,38 @@ export class TUI {
 			return;
 		}
 
-		// Strip ANSI codes for blessed (we'll use blessed tags instead)
-		const cleanMessage = this.stripAnsi(message);
-
-		// Add color tags based on level
-		let coloredMessage = cleanMessage;
-		switch (level) {
-			case "error":
-				coloredMessage = `{red-fg}${cleanMessage}{/red-fg}`;
-				break;
-			case "warn":
-				coloredMessage = `{yellow-fg}${cleanMessage}{/yellow-fg}`;
-				break;
-			case "success":
-				coloredMessage = `{green-fg}${cleanMessage}{/green-fg}`;
-				break;
-			case "info":
-				coloredMessage = `{cyan-fg}${cleanMessage}{/cyan-fg}`;
-				break;
-			case "debug":
-				coloredMessage = `{gray-fg}${cleanMessage}{/gray-fg}`;
-				break;
-			default:
-				coloredMessage = cleanMessage;
-		}
-
-		this.logBox.log(coloredMessage);
-		this.screen.render();
+		this.console.log(message, level);
 	}
 
 	/**
-	 * Update the status bar and command bar
+	 * Update the status bar and hotkey bar
 	 * @param {Object} status - Status information
 	 */
 	updateStatus(status) {
 		if (!this.isInitialized) return;
 
-		const { phase, iteration, interactive } = status;
+		const { phase, step, iteration, interactive } = status;
 
-		// Update status bar with phase and iteration
-		let statusText = "";
+		// Update header if phase is provided
 		if (phase) {
-			statusText += `{bold}Phase:{/bold} ${phase}`;
+			this.updateHeader(phase);
 		}
-		if (iteration) {
-			statusText += ` {bold}│{/bold} {bold}Iteration:{/bold} ${iteration}`;
+
+		// Update stats if iteration is provided
+		if (iteration !== undefined) {
+			this.updateStats({ iteration });
+		}
+
+		// Update status bar with step (no iteration)
+		let statusText = "";
+		if (step) {
+			statusText = `{bold}Step:{/bold} ${step}`;
 		}
 		this.statusBar.setContent(statusText);
 
-		// Update command bar with interactive commands
-		if (interactive) {
-			const commandText =
-				"{bold}[p]{/bold} prompt  {bold}[SPACE]{/bold} pause  {bold}[ESC]{/bold} cancel  {bold}[?]{/bold} help  {bold}[Ctrl+C]{/bold} quit";
-			this.commandBar.setContent(commandText);
-		} else {
-			this.commandBar.setContent("{bold}[Ctrl+C]{/bold} quit");
+		// Update hotkey bar with interactive mode
+		if (interactive !== undefined) {
+			this.hotkeyBar.setInteractive(interactive);
 		}
 
 		this.screen.render();
@@ -304,16 +227,103 @@ export class TUI {
 		if (!this.isInitialized) return;
 
 		if (count > 0) {
-			this.promptCountBox.setContent(`{bold}📬 ${count} queued{/bold}`);
+			this.promptCountBox.setContent(`📬 ${count}`);
 			this.promptCountBox.style.bg = "yellow";
-			this.promptCountBox.style.fg = "black";
+			this.promptCountBox.border.fg = "yellow";
 		} else {
-			this.promptCountBox.setContent("{bold}No prompts{/bold}");
+			this.promptCountBox.setContent("📬 0");
 			this.promptCountBox.style.bg = "green";
-			this.promptCountBox.style.fg = "black";
+			this.promptCountBox.border.fg = "green";
 		}
 
 		this.screen.render();
+	}
+
+	/**
+	 * Set hotkey bar visibility
+	 * @param {boolean} visible - Whether to show hotkeys
+	 */
+	setHotkeysVisible(visible) {
+		if (this.hotkeyBar) {
+			this.hotkeyBar.setVisible(visible);
+		}
+	}
+
+	/**
+	 * Toggle perpetual mode
+	 */
+	togglePerpetualMode() {
+		this.perpetualMode = !this.perpetualMode;
+		const status = this.perpetualMode ? "enabled" : "disabled";
+		this.log(`🔄 Perpetual mode ${status}`, "info");
+		this.screen.emit("perpetual-mode-toggled", this.perpetualMode);
+	}
+
+	/**
+	 * Get perpetual mode status
+	 * @returns {boolean} - Whether perpetual mode is enabled
+	 */
+	isPerpetualMode() {
+		return this.perpetualMode;
+	}
+
+	/**
+	 * Set perpetual mode
+	 * @param {boolean} enabled - Enable or disable perpetual mode
+	 */
+	setPerpetualMode(enabled) {
+		this.perpetualMode = enabled;
+	}
+
+	/**
+	 * Show prompt modal to queue a new prompt
+	 */
+	async showPromptModal() {
+		if (!this.isInitialized) return;
+
+		const promptText = await this.prompt("Enter a prompt to queue:");
+		if (promptText?.trim()) {
+			this.queuedPrompts.push(promptText.trim());
+			this.updatePromptCount(this.queuedPrompts.length);
+			this.log(`✓ Queued prompt: "${promptText.trim()}"`, "success");
+		}
+	}
+
+	/**
+	 * Handle pause - show pause status
+	 */
+	async handlePause() {
+		if (!this.isInitialized) return;
+
+		this.isPaused = true;
+		this.log("⏸️  Paused - Press SPACE to resume", "warn");
+
+		// Wait for another space key to resume
+		await new Promise((resolve) => {
+			const resumeHandler = () => {
+				this.isPaused = false;
+				this.log("▶️  Resumed", "success");
+				this.screen.unkey(["space"], resumeHandler);
+				resolve();
+			};
+			this.screen.key(["space"], resumeHandler);
+		});
+	}
+
+	/**
+	 * Get queued prompts
+	 * @returns {Array<string>} - Array of queued prompt strings
+	 */
+	getQueuedPrompts() {
+		return [...this.queuedPrompts];
+	}
+
+	/**
+	 * Clear queued prompts
+	 */
+	clearQueuedPrompts() {
+		this.queuedPrompts = [];
+		this.updatePromptCount(0);
 	}
 
 	/**
@@ -327,14 +337,7 @@ export class TUI {
 			return;
 		}
 
-		const border = "━".repeat(60);
-		let color = "cyan";
-		if (style === "success") color = "green";
-		if (style === "warning") color = "yellow";
-
-		this.log(`{${color}-fg}{bold}${border}{/bold}{/${color}-fg}`);
-		this.log(`{${color}-fg}{bold}${message}{/bold}{/${color}-fg}`);
-		this.log(`{${color}-fg}{bold}${border}{/bold}{/${color}-fg}`);
+		this.console.showBanner(message, style);
 	}
 
 	/**
@@ -347,23 +350,7 @@ export class TUI {
 			return;
 		}
 
-		// Split by lines and log each
-		const lines = data.toString().split("\n");
-		lines.forEach((line) => {
-			if (line.trim()) {
-				this.log(line);
-			}
-		});
-	}
-
-	/**
-	 * Strip ANSI color codes from a string
-	 * @param {string} str - String with ANSI codes
-	 * @returns {string} - Clean string
-	 */
-	stripAnsi(str) {
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching ANSI escape codes
-		return str.replace(/\x1b\[[0-9;]*m/g, "");
+		this.console.writeOutput(data);
 	}
 
 	/**
@@ -553,7 +540,9 @@ export class TUI {
 			const content = [
 				"{yellow-fg}Session limit reached{/yellow-fg}",
 				"",
-				`Time remaining: {bold}{green-fg}${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""}{/green-fg}{/bold}`,
+				`Time remaining: {bold}{green-fg}${remainingMinutes} minute${
+					remainingMinutes !== 1 ? "s" : ""
+				}{/green-fg}{/bold}`,
 				resetInfo,
 				"",
 				"{gray-fg}Clawd will automatically retry when the limit resets{/gray-fg}",
@@ -657,7 +646,21 @@ export class TUI {
 	 * Destroy the TUI and restore terminal
 	 */
 	destroy() {
-		this.stopSpinner();
+		if (this.header) {
+			this.header.destroy();
+		}
+		if (this.statsBar) {
+			this.statsBar.destroy();
+		}
+		if (this.console) {
+			this.console.destroy();
+		}
+		if (this.hotkeyBar) {
+			this.hotkeyBar.destroy();
+		}
+		if (this.helpModal) {
+			this.helpModal.destroy();
+		}
 		if (this.loadingIndicator) {
 			this.loadingIndicator.destroy();
 		}

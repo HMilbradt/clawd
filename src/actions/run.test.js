@@ -191,6 +191,11 @@ describe("runAction", () => {
 				showBanner: vi.fn(),
 				log: vi.fn(),
 				updateStatus: vi.fn(),
+				updateStats: vi.fn(),
+				startRuntime: vi.fn(),
+				setHotkeysVisible: vi.fn(),
+				setPerpetualMode: vi.fn(),
+				isPerpetualMode: vi.fn().mockReturnValue(false),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
@@ -203,6 +208,9 @@ describe("runAction", () => {
 				"🤖 Clawd - Claude Code Orchestrator",
 				"info",
 			);
+			expect(mockTUI.setHotkeysVisible).toHaveBeenCalledWith(false);
+			expect(mockTUI.updateStatus).toHaveBeenCalledWith({ interactive: true });
+			expect(mockTUI.startRuntime).toHaveBeenCalled();
 			expect(mockTUI.destroy).toHaveBeenCalled();
 		});
 
@@ -213,6 +221,10 @@ describe("runAction", () => {
 				log: vi.fn(),
 				prompt: vi.fn().mockResolvedValue("User input"),
 				updateStatus: vi.fn(),
+				updateStats: vi.fn(),
+				startRuntime: vi.fn(),
+				setHotkeysVisible: vi.fn(),
+				setPerpetualMode: vi.fn(),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
@@ -234,6 +246,10 @@ describe("runAction", () => {
 				log: vi.fn(),
 				prompt: vi.fn().mockResolvedValue(""),
 				updateStatus: vi.fn(),
+				updateStats: vi.fn(),
+				startRuntime: vi.fn(),
+				setHotkeysVisible: vi.fn(),
+				setPerpetualMode: vi.fn(),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
