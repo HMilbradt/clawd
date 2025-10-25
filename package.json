@@ -1,0 +1,35 @@
+{
+  "name": "clawd",
+  "version": "0.0.5",
+  "description": "Claude Code CLI Wrapper for multi-phase project execution",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "clawd": "./bin/clawd.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "changelog": "node scripts/generate-changelog.js",
+    "version": "npm run changelog && git add CHANGELOG.md",
+    "tag": "git tag -a v$npm_package_version -m \"Release v$npm_package_version\"",
+    "release": "npm run tag && git push origin v$npm_package_version && npm publish"
+  },
+  "keywords": [
+    "claude",
+    "cli",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^7.9.0",
+    "blessed": "^0.1.81",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}
