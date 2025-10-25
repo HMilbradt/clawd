@@ -48,30 +48,60 @@ class TUIDestination {
 
 const tuiDestination = new TUIDestination();
 
-// Ensure .clawd/logs directory exists
-const logsDir = path.join(process.cwd(), ".clawd", "logs");
-if (!fs.existsSync(logsDir)) {
-	fs.mkdirSync(logsDir, { recursive: true });
+// Lazy initialization of file streams
+let fileStream;
+let errorStream;
+
+function ensureLogStreams() {
+	if (fileStream && errorStream) {
+		return;
+	}
+
+	// Ensure .clawd/logs directory exists
+	const logsDir = path.join(process.cwd(), ".clawd", "logs");
+	if (!fs.existsSync(logsDir)) {
+		fs.mkdirSync(logsDir, { recursive: true });
+	}
+
+	// Create file streams
+	fileStream = fs.createWriteStream(path.join(logsDir, "clawd.log"), {
+		flags: "a",
+	});
+	errorStream = fs.createWriteStream(path.join(logsDir, "clawd-error.log"), {
+		flags: "a",
+	});
 }
 
-// Create file streams
-const fileStream = fs.createWriteStream(path.join(logsDir, "clawd.log"), {
-	flags: "a",
-});
-const errorStream = fs.createWriteStream(
-	path.join(logsDir, "clawd-error.log"),
-	{ flags: "a" },
-);
+// Initialize streams only if not in test environment
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+	ensureLogStreams();
+}
 
-// Create a multistream logger
+// Create a multistream logger with lazy stream access
 const logger = pino(
 	{
 		level: process.env.LOG_LEVEL || "debug",
 		timestamp: pino.stdTimeFunctions.isoTime,
 	},
 	pino.multistream([
-		{ level: "debug", stream: fileStream },
-		{ level: "error", stream: errorStream },
+		{
+			level: "debug",
+			stream: {
+				write: (msg) => {
+					ensureLogStreams();
+					fileStream.write(msg);
+				},
+			},
+		},
+		{
+			level: "error",
+			stream: {
+				write: (msg) => {
+					ensureLogStreams();
+					errorStream.write(msg);
+				},
+			},
+		},
 		{ level: "info", stream: { write: (msg) => tuiDestination.write(msg) } },
 	]),
 );

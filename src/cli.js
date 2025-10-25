@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { createAdapterAction, showAdapterAction } from "./actions/adapters.js";
 import { initAction } from "./actions/init.js";
 import { createPluginAction, listPluginsAction } from "./actions/plugins.js";
 import { copyPromptAction, listPromptsAction } from "./actions/prompts.js";
@@ -71,6 +72,23 @@ pluginsCmd
 	.description("Create a new plugin from template")
 	.action(async (name) => {
 		await createPluginAction(name);
+	});
+
+// Adapters subcommand
+const adaptersCmd = program.command("adapters").description("Manage adapters");
+
+adaptersCmd
+	.command("show")
+	.description("Show current adapter information")
+	.action(() => {
+		showAdapterAction();
+	});
+
+adaptersCmd
+	.command("create <name>")
+	.description("Create a new adapter from template")
+	.action(async (name) => {
+		await createAdapterAction(name);
 	});
 
 // Init command

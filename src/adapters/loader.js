@@ -10,11 +10,24 @@ import { ClaudeCodeAdapter } from "./claude-code.js";
 let currentAdapter = null;
 
 /**
+ * Import function that can be mocked in tests
+ * @param {string} url - Module URL to import
+ * @returns {Promise<any>}
+ */
+export async function dynamicImport(url) {
+	return import(url);
+}
+
+/**
  * Load adapter from .clawd/adapter.js or use default
  * @param {string} cwd - Working directory
+ * @param {Function} importFn - Import function (for testing)
  * @returns {Promise<LLMAdapter>}
  */
-export async function loadAdapter(cwd = process.cwd()) {
+export async function loadAdapter(
+	cwd = process.cwd(),
+	importFn = dynamicImport,
+) {
 	const adapterPath = path.join(cwd, ".clawd", "adapter.js");
 
 	// Check if custom adapter exists
@@ -25,7 +38,7 @@ export async function loadAdapter(cwd = process.cwd()) {
 
 		// Import the custom adapter
 		const adapterUrl = pathToFileURL(adapterPath).href;
-		const adapterModule = await import(adapterUrl);
+		const adapterModule = await importFn(adapterUrl);
 
 		// Get the default export or createAdapter function
 		if (adapterModule.default) {

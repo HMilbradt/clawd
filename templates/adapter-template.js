@@ -1,10 +1,10 @@
 import { LLMAdapter } from "../src/adapters/base.js";
 
 /**
- * Custom LLM Adapter Template
+ * {{ADAPTER_NAME}} Adapter
  *
  * This template shows how to create a custom adapter for any LLM provider.
- * Place this file at .clawd/adapter.js in your project to use it.
+ * Rename this file to 'adapter.js' in your .clawd directory to use it.
  *
  * Example use cases:
  * - Use OpenAI API instead of Claude Code
@@ -12,7 +12,7 @@ import { LLMAdapter } from "../src/adapters/base.js";
  * - Use Azure OpenAI
  * - Add custom pre/post-processing
  */
-export default class CustomAdapter extends LLMAdapter {
+export default class {{ADAPTER_NAME}}Adapter extends LLMAdapter {
 	constructor(config = {}) {
 		super(config);
 		// Add your configuration here
@@ -131,6 +131,6 @@ export default class CustomAdapter extends LLMAdapter {
 	 * @returns {string}
 	 */
 	getName() {
-		return "Custom LLM Adapter";
+		return "{{ADAPTER_NAME}} Adapter";
 	}
 }
