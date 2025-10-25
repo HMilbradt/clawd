@@ -1,7 +1,7 @@
-import { spawn } from 'child_process';
-import fs from 'fs/promises';
-import path from 'path';
-import logger from './logger.js';
+import { spawn } from "child_process";
+import fs from "fs/promises";
+import path from "path";
+import logger from "./logger.js";
 
 /**
  * Execute a git command and return the result
@@ -10,24 +10,24 @@ import logger from './logger.js';
  * @returns {Promise<{stdout: string, stderr: string, code: number}>}
  */
 async function execGit(args, cwd = process.cwd()) {
-  return new Promise((resolve) => {
-    const git = spawn('git', args, { cwd });
+	return new Promise((resolve) => {
+		const git = spawn("git", args, { cwd });
 
-    let stdout = '';
-    let stderr = '';
+		let stdout = "";
+		let stderr = "";
 
-    git.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
+		git.stdout.on("data", (data) => {
+			stdout += data.toString();
+		});
 
-    git.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+		git.stderr.on("data", (data) => {
+			stderr += data.toString();
+		});
 
-    git.on('close', (code) => {
-      resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code });
-    });
-  });
+		git.on("close", (code) => {
+			resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code });
+		});
+	});
 }
 
 /**
@@ -36,8 +36,8 @@ async function execGit(args, cwd = process.cwd()) {
  * @returns {Promise<boolean>}
  */
 export async function isGitRepo(cwd = process.cwd()) {
-  const result = await execGit(['rev-parse', '--git-dir'], cwd);
-  return result.code === 0;
+	const result = await execGit(["rev-parse", "--git-dir"], cwd);
+	return result.code === 0;
 }
 
 /**
@@ -46,14 +46,14 @@ export async function isGitRepo(cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function initGitRepo(cwd = process.cwd()) {
-  logger.info('Initializing git repository...');
-  const result = await execGit(['init'], cwd);
+	logger.info("Initializing git repository...");
+	const result = await execGit(["init"], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to initialize git repository: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to initialize git repository: ${result.stderr}`);
+	}
 
-  logger.info('✓ Git repository initialized');
+	logger.info("✓ Git repository initialized");
 }
 
 /**
@@ -62,15 +62,15 @@ export async function initGitRepo(cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function createGitignore(cwd = process.cwd()) {
-  const gitignorePath = path.join(cwd, '.gitignore');
+	const gitignorePath = path.join(cwd, ".gitignore");
 
-  try {
-    await fs.access(gitignorePath);
-    logger.info('.gitignore already exists');
-    return;
-  } catch {
-    // File doesn't exist, create it
-    const defaultGitignore = `# Logs
+	try {
+		await fs.access(gitignorePath);
+		logger.info(".gitignore already exists");
+		return;
+	} catch {
+		// File doesn't exist, create it
+		const defaultGitignore = `# Logs
 node_modules/
 *.log
 
@@ -83,9 +83,9 @@ node_modules/
 Thumbs.db
 `;
 
-    await fs.writeFile(gitignorePath, defaultGitignore);
-    logger.info('✓ Created .gitignore');
-  }
+		await fs.writeFile(gitignorePath, defaultGitignore);
+		logger.info("✓ Created .gitignore");
+	}
 }
 
 /**
@@ -94,8 +94,8 @@ Thumbs.db
  * @returns {Promise<boolean>}
  */
 export async function hasCommits(cwd = process.cwd()) {
-  const result = await execGit(['rev-list', '--all', '--count'], cwd);
-  return result.code === 0 && parseInt(result.stdout) > 0;
+	const result = await execGit(["rev-list", "--all", "--count"], cwd);
+	return result.code === 0 && parseInt(result.stdout) > 0;
 }
 
 /**
@@ -104,35 +104,35 @@ export async function hasCommits(cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function createInitialCommit(cwd = process.cwd()) {
-  const hasAnyCommits = await hasCommits(cwd);
+	const hasAnyCommits = await hasCommits(cwd);
 
-  if (hasAnyCommits) {
-    logger.info('Repository already has commits');
-    return;
-  }
+	if (hasAnyCommits) {
+		logger.info("Repository already has commits");
+		return;
+	}
 
-  logger.info('Creating initial commit...');
+	logger.info("Creating initial commit...");
 
-  // Stage .gitignore if it exists
-  const gitignorePath = path.join(cwd, '.gitignore');
-  try {
-    await fs.access(gitignorePath);
-    await execGit(['add', '.gitignore'], cwd);
-  } catch {
-    // .gitignore doesn't exist, that's okay
-  }
+	// Stage .gitignore if it exists
+	const gitignorePath = path.join(cwd, ".gitignore");
+	try {
+		await fs.access(gitignorePath);
+		await execGit(["add", ".gitignore"], cwd);
+	} catch {
+		// .gitignore doesn't exist, that's okay
+	}
 
-  // Create initial commit (may be empty)
-  const result = await execGit(
-    ['commit', '--allow-empty', '-m', 'chore: initial commit'],
-    cwd
-  );
+	// Create initial commit (may be empty)
+	const result = await execGit(
+		["commit", "--allow-empty", "-m", "chore: initial commit"],
+		cwd,
+	);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to create initial commit: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to create initial commit: ${result.stderr}`);
+	}
 
-  logger.info('✓ Initial commit created');
+	logger.info("✓ Initial commit created");
 }
 
 /**
@@ -141,13 +141,13 @@ export async function createInitialCommit(cwd = process.cwd()) {
  * @returns {Promise<string>}
  */
 export async function getCurrentBranch(cwd = process.cwd()) {
-  const result = await execGit(['branch', '--show-current'], cwd);
+	const result = await execGit(["branch", "--show-current"], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get current branch: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get current branch: ${result.stderr}`);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 /**
@@ -157,14 +157,14 @@ export async function getCurrentBranch(cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function createBranch(branchName, cwd = process.cwd()) {
-  logger.info(`Creating branch: ${branchName}`);
-  const result = await execGit(['checkout', '-b', branchName], cwd);
+	logger.info(`Creating branch: ${branchName}`);
+	const result = await execGit(["checkout", "-b", branchName], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to create branch ${branchName}: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to create branch ${branchName}: ${result.stderr}`);
+	}
 
-  logger.info(`✓ Branch ${branchName} created`);
+	logger.info(`✓ Branch ${branchName} created`);
 }
 
 /**
@@ -174,21 +174,23 @@ export async function createBranch(branchName, cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function checkoutBranch(branchName, cwd = process.cwd()) {
-  logger.info(`Switching to branch: ${branchName}`);
+	logger.info(`Switching to branch: ${branchName}`);
 
-  // Try to checkout existing branch first
-  let result = await execGit(['checkout', branchName], cwd);
+	// Try to checkout existing branch first
+	let result = await execGit(["checkout", branchName], cwd);
 
-  if (result.code !== 0) {
-    // Branch doesn't exist, create it
-    result = await execGit(['checkout', '-b', branchName], cwd);
+	if (result.code !== 0) {
+		// Branch doesn't exist, create it
+		result = await execGit(["checkout", "-b", branchName], cwd);
 
-    if (result.code !== 0) {
-      throw new Error(`Failed to checkout/create branch ${branchName}: ${result.stderr}`);
-    }
-  }
+		if (result.code !== 0) {
+			throw new Error(
+				`Failed to checkout/create branch ${branchName}: ${result.stderr}`,
+			);
+		}
+	}
 
-  logger.info(`✓ On branch ${branchName}`);
+	logger.info(`✓ On branch ${branchName}`);
 }
 
 /**
@@ -197,11 +199,11 @@ export async function checkoutBranch(branchName, cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function stageAll(cwd = process.cwd()) {
-  const result = await execGit(['add', '-A'], cwd);
+	const result = await execGit(["add", "-A"], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to stage changes: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to stage changes: ${result.stderr}`);
+	}
 }
 
 /**
@@ -211,19 +213,19 @@ export async function stageAll(cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function commit(message, cwd = process.cwd()) {
-  logger.info(`Creating commit: ${message}`);
-  const result = await execGit(['commit', '-m', message], cwd);
+	logger.info(`Creating commit: ${message}`);
+	const result = await execGit(["commit", "-m", message], cwd);
 
-  if (result.code !== 0) {
-    // Check if it's just "nothing to commit"
-    if (result.stdout.includes('nothing to commit')) {
-      logger.info('No changes to commit');
-      return;
-    }
-    throw new Error(`Failed to commit: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		// Check if it's just "nothing to commit"
+		if (result.stdout.includes("nothing to commit")) {
+			logger.info("No changes to commit");
+			return;
+		}
+		throw new Error(`Failed to commit: ${result.stderr}`);
+	}
 
-  logger.info('✓ Commit created');
+	logger.info("✓ Commit created");
 }
 
 /**
@@ -233,14 +235,14 @@ export async function commit(message, cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function rebase(targetBranch, cwd = process.cwd()) {
-  logger.info(`Rebasing onto ${targetBranch}...`);
-  const result = await execGit(['rebase', targetBranch], cwd);
+	logger.info(`Rebasing onto ${targetBranch}...`);
+	const result = await execGit(["rebase", targetBranch], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to rebase onto ${targetBranch}: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to rebase onto ${targetBranch}: ${result.stderr}`);
+	}
 
-  logger.info(`✓ Rebased onto ${targetBranch}`);
+	logger.info(`✓ Rebased onto ${targetBranch}`);
 }
 
 /**
@@ -250,14 +252,14 @@ export async function rebase(targetBranch, cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function merge(branchName, cwd = process.cwd()) {
-  logger.info(`Merging ${branchName}...`);
-  const result = await execGit(['merge', branchName, '--no-ff'], cwd);
+	logger.info(`Merging ${branchName}...`);
+	const result = await execGit(["merge", branchName, "--no-ff"], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to merge ${branchName}: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to merge ${branchName}: ${result.stderr}`);
+	}
 
-  logger.info(`✓ Merged ${branchName}`);
+	logger.info(`✓ Merged ${branchName}`);
 }
 
 /**
@@ -268,13 +270,16 @@ export async function merge(branchName, cwd = process.cwd()) {
  * @returns {Promise<string>}
  */
 export async function getDiff(baseBranch, compareBranch, cwd = process.cwd()) {
-  const result = await execGit(['diff', `${baseBranch}...${compareBranch}`], cwd);
+	const result = await execGit(
+		["diff", `${baseBranch}...${compareBranch}`],
+		cwd,
+	);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get diff: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get diff: ${result.stderr}`);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 /**
@@ -283,13 +288,13 @@ export async function getDiff(baseBranch, compareBranch, cwd = process.cwd()) {
  * @returns {Promise<string>}
  */
 export async function getLatestCommit(cwd = process.cwd()) {
-  const result = await execGit(['rev-parse', 'HEAD'], cwd);
+	const result = await execGit(["rev-parse", "HEAD"], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get latest commit: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get latest commit: ${result.stderr}`);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 /**
@@ -299,13 +304,13 @@ export async function getLatestCommit(cwd = process.cwd()) {
  * @returns {Promise<string>}
  */
 export async function getCommitDiff(commitHash, cwd = process.cwd()) {
-  const result = await execGit(['show', commitHash], cwd);
+	const result = await execGit(["show", commitHash], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get commit diff: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get commit diff: ${result.stderr}`);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 /**
@@ -315,13 +320,13 @@ export async function getCommitDiff(commitHash, cwd = process.cwd()) {
  * @returns {Promise<string[]>} Array of commit hashes
  */
 export async function getCommitsSince(baseBranch, cwd = process.cwd()) {
-  const result = await execGit(['rev-list', `${baseBranch}..HEAD`], cwd);
+	const result = await execGit(["rev-list", `${baseBranch}..HEAD`], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get commits: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get commits: ${result.stderr}`);
+	}
 
-  return result.stdout ? result.stdout.split('\n').filter(Boolean) : [];
+	return result.stdout ? result.stdout.split("\n").filter(Boolean) : [];
 }
 
 /**
@@ -331,13 +336,13 @@ export async function getCommitsSince(baseBranch, cwd = process.cwd()) {
  * @returns {Promise<string>}
  */
 export async function getCommitMessage(commitHash, cwd = process.cwd()) {
-  const result = await execGit(['log', '-1', '--pretty=%B', commitHash], cwd);
+	const result = await execGit(["log", "-1", "--pretty=%B", commitHash], cwd);
 
-  if (result.code !== 0) {
-    throw new Error(`Failed to get commit message: ${result.stderr}`);
-  }
+	if (result.code !== 0) {
+		throw new Error(`Failed to get commit message: ${result.stderr}`);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 /**
@@ -346,29 +351,29 @@ export async function getCommitMessage(commitHash, cwd = process.cwd()) {
  * @returns {Promise<void>}
  */
 export async function setupProjectGit(cwd = process.cwd()) {
-  logger.info('Setting up project git repository...');
+	logger.info("Setting up project git repository...");
 
-  // Check if git repo exists
-  const isRepo = await isGitRepo(cwd);
+	// Check if git repo exists
+	const isRepo = await isGitRepo(cwd);
 
-  if (!isRepo) {
-    // Initialize git repository
-    await initGitRepo(cwd);
+	if (!isRepo) {
+		// Initialize git repository
+		await initGitRepo(cwd);
 
-    // Create .gitignore
-    await createGitignore(cwd);
+		// Create .gitignore
+		await createGitignore(cwd);
 
-    // Create initial commit
-    await createInitialCommit(cwd);
-  } else {
-    logger.info('Git repository already exists');
+		// Create initial commit
+		await createInitialCommit(cwd);
+	} else {
+		logger.info("Git repository already exists");
 
-    // Ensure there's at least one commit
-    const hasAnyCommits = await hasCommits(cwd);
-    if (!hasAnyCommits) {
-      await createInitialCommit(cwd);
-    }
-  }
+		// Ensure there's at least one commit
+		const hasAnyCommits = await hasCommits(cwd);
+		if (!hasAnyCommits) {
+			await createInitialCommit(cwd);
+		}
+	}
 
-  logger.info('✓ Git setup complete');
+	logger.info("✓ Git setup complete");
 }
