@@ -19,12 +19,16 @@ program
   .version('1.0.0');
 
 program
-  .argument('[prompt]', 'Project prompt for Claude (optional in interactive mode)')
-  .option('-r, --resume', 'Resume existing project plan')
+  .argument('[prompt]', 'Project prompt for Claude (optional - will start in interactive mode if omitted)')
   .option('-p, --perpetual', 'Enable perpetual mode - continuously add new features after completion')
   .option('-i, --interactive', 'Enable interactive mode - prompt while the program is running')
   .action(async (prompt, options) => {
     try {
+      // If no prompt provided, default to interactive mode
+      if (!prompt) {
+        options.interactive = true;
+      }
+
       // Initialize TUI immediately if in interactive mode
       let tui = null;
       if (options.interactive) {
@@ -50,8 +54,8 @@ program
         planExists = false;
       }
 
-      if (planExists && !options.resume) {
-        // Auto-detect existing plan
+      if (planExists) {
+        // Auto-detect and load existing plan
         if (tui) {
           tui.log('📋 Found existing PROJECT_PLAN.md', 'info');
           tui.log('✓ Loading existing plan', 'success');
@@ -60,15 +64,6 @@ program
           console.log(chalk.green('✓ Loading existing plan\n'));
         }
         planContent = await fs.readFile(planPath, 'utf-8');
-      } else if (options.resume) {
-        // Resume existing plan
-        logger.info('Resuming existing project plan...');
-        planContent = await fs.readFile(planPath, 'utf-8');
-        if (tui) {
-          tui.log('✓ Loaded existing plan', 'success');
-        } else {
-          console.log(chalk.green('✓ Loaded existing plan\n'));
-        }
       } else {
         // Need to generate new plan - ask for prompt if not provided
         if (!prompt) {
@@ -80,7 +75,8 @@ program
               process.exit(1);
             }
           } else {
-            console.error(chalk.red('\n❌ Error: Prompt is required when not in interactive mode\n'));
+            // This should never happen since we auto-enable interactive mode above
+            console.error(chalk.red('\n❌ Error: Prompt is required\n'));
             process.exit(1);
           }
         }

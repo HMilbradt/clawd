@@ -4,16 +4,21 @@
   "description": "Claude Code CLI Wrapper for multi-phase project execution",
   "main": "src/index.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HMilbradt/clawd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HMilbradt/clawd/issues"
+  },
+  "homepage": "https://github.com/HMilbradt/clawd#readme",
   "bin": {
     "clawd": "./bin/clawd.js"
   },
   "scripts": {
     "start": "node src/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "changelog": "node scripts/generate-changelog.js",
-    "version": "npm run changelog && git add CHANGELOG.md",
-    "tag": "git tag -a v$npm_package_version -m \"Release v$npm_package_version\"",
-    "release": "npm run tag && git push origin v$npm_package_version && npm publish"
+    "prepare": "husky"
   },
   "keywords": [
     "claude",
@@ -30,6 +35,14 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
-    "jest": "^30.2.0"
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.6",
+    "@semantic-release/npm": "^12.0.2",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "semantic-release": "^24.2.9"
   }
 }

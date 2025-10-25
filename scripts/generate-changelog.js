@@ -51,22 +51,43 @@ async function generateChangelog() {
 
       const commitLines = commits.trim().split('\n').filter(Boolean);
 
-      // Categorize commits
+      // Categorize commits (conventional commits format)
       const added = [];
       const changed = [];
       const fixed = [];
       const other = [];
 
       commitLines.forEach(commit => {
-        const lower = commit.toLowerCase();
-        if (lower.startsWith('add') || lower.startsWith('feat')) {
-          added.push(commit);
-        } else if (lower.startsWith('fix')) {
-          fixed.push(commit);
-        } else if (lower.startsWith('update') || lower.startsWith('change') || lower.startsWith('refactor')) {
-          changed.push(commit);
+        // Parse conventional commit format: type(scope): message
+        const conventionalMatch = commit.match(/^(\w+)(?:\([^)]+\))?:\s*(.+)$/);
+
+        if (conventionalMatch) {
+          const [, type, message] = conventionalMatch;
+          const formattedMessage = message.charAt(0).toUpperCase() + message.slice(1);
+
+          if (type === 'feat') {
+            added.push(formattedMessage);
+          } else if (type === 'fix') {
+            fixed.push(formattedMessage);
+          } else if (['refactor', 'perf', 'style', 'chore'].includes(type)) {
+            changed.push(formattedMessage);
+          } else if (type === 'docs') {
+            changed.push(formattedMessage);
+          } else {
+            other.push(commit);
+          }
         } else {
-          other.push(commit);
+          // Fallback for non-conventional commits
+          const lower = commit.toLowerCase();
+          if (lower.startsWith('add') || lower.startsWith('feat')) {
+            added.push(commit);
+          } else if (lower.startsWith('fix')) {
+            fixed.push(commit);
+          } else if (lower.startsWith('update') || lower.startsWith('change') || lower.startsWith('refactor')) {
+            changed.push(commit);
+          } else {
+            other.push(commit);
+          }
         }
       });
 

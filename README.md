@@ -1,108 +1,195 @@
-# Clawd - Claude Code Orchestrator
+# Clawd
 
-A simple wrapper around the Claude Code CLI that orchestrates multi-phase project execution. Clawd generates a comprehensive project plan and then executes it step-by-step using Claude Code.
+**Clawd** is an intelligent orchestrator for the Claude Code CLI that transforms complex development tasks into automated, multi-phase project execution. It generates comprehensive project plans and executes them step-by-step, tracking progress and adapting along the way.
 
-## How It Works
+## Why Clawd?
 
-1. **Plan Generation**: Takes your prompt and generates a comprehensive markdown plan with phases and checklists
-2. **Iterative Execution**: Spawns Claude Code instances to work on each step sequentially
-3. **Progress Tracking**: Updates the plan file as tasks complete
-4. **Completion Evaluation**: After each iteration, evaluates whether the project is complete
-5. **Perpetual Mode** (optional): When complete, researches and adds new features to continue indefinitely
+If you're a Claude Pro subscriber using Claude Code, you've likely encountered these limitations:
+
+- **💸 Claude API Not Included** - The Claude API requires separate payment and usage-based billing, even with a Pro subscription. Clawd leverages your existing Claude Pro subscription through Claude Code, so you're not paying twice.
+
+- **⏹️ Claude Code Eventually Stops** - Claude Code has context limits and will pause execution, requiring you to manually reprompt it to continue. This interrupts your flow and requires constant supervision.
+
+- **📝 Incomplete Task Execution** - Claude Code often completes part of a task but doesn't see it through to the end. You give it a complex request, it makes progress, then stops before finishing—leaving you to figure out what's left and reprompt.
+
+- **🚀 Why Not Automate It?** - Clawd solves all of this by automatically breaking down your project into phases, executing each step, tracking completion, and reprompting as needed—all without your intervention. Set it and forget it (or watch it work in interactive mode).
+
+In short: **Clawd lets you use your Claude Pro subscription to build entire projects autonomously**, without hitting API limits, manually reprompting, or babysitting incomplete executions.
+
+## Features
+
+- **🎯 Intelligent Planning** - Automatically breaks down complex prompts into structured, multi-phase project plans
+- **🔄 Iterative Execution** - Spawns Claude Code instances to execute each task sequentially
+- **📊 Progress Tracking** - Real-time updates to plan files with checkboxes showing completion status
+- **♾️ Perpetual Mode** - Continuously researches and adds new features when projects complete
+- **🖥️ Interactive TUI** - Full terminal interface with scrollable logs, keyboard controls, and live prompting
+- **✅ Smart Evaluation** - Automatically evaluates progress and determines when projects are complete
+
+## Prerequisites
+
+- **Node.js** (v18 or higher with ESM support)
+- **Claude Code CLI** - Must be installed and available in your PATH ([installation guide](https://docs.claude.com/en/docs/claude-code))
 
 ## Installation
 
 ```bash
-npm install
-npm link  # Make 'clawd' available globally
+npm install -g clawd
 ```
 
-## Usage
+## Quick Start
 
-### Start a New Project
+The simplest way to use Clawd is to run it without any arguments:
+
+```bash
+clawd
+```
+
+This starts interactive mode where you'll be prompted for what you want to build. Alternatively, provide your project description directly:
 
 ```bash
 clawd "Build a REST API with Express and PostgreSQL"
 ```
 
-This will:
-- Generate a `PROJECT_PLAN.md` in the current directory
-- Begin executing each phase and step
-- Log progress to console and `clawd.log`
-- Continue until the project is complete
+Clawd will:
+1. Generate a `PROJECT_PLAN.md` with phases and tasks
+2. Execute each task using Claude Code
+3. Track progress with checkboxes
+4. Continue until complete
 
-### Resume an Existing Project
+## Usage
+
+### Interactive Mode (Default)
+
+Running `clawd` with no arguments starts the interactive Terminal User Interface:
 
 ```bash
-clawd --resume "continuation prompt"
+clawd
 ```
 
-This will reload the existing `PROJECT_PLAN.md` and continue from unchecked items.
+**TUI Features:**
+- Scrollable log area showing all output
+- Status bar with current phase and keyboard shortcuts
+- Prompt counter displaying queued prompts
+- Loading indicators for long operations
+- Auto-detection of existing `PROJECT_PLAN.md`
+
+**Keyboard Commands:**
+- `p` - Queue a prompt for the next iteration
+- `SPACE` - Pause execution (shows menu: continue/prompt/quit)
+- `ESC` - Cancel current task (requires confirmation)
+- `?` or `h` - Show help
+- `q` - Quit
+- `Ctrl+C` - Exit immediately
+- Mouse wheel or arrow keys - Scroll through logs
+
+You can also provide a prompt upfront while staying in interactive mode:
+
+```bash
+clawd --interactive "Build a task management app"
+```
+
+### Standard Mode
+
+Provide a prompt and let Clawd run autonomously:
+
+```bash
+clawd "Create a CLI tool for managing todos"
+```
+
+Output appears in the console and is logged to `clawd.log`.
+
+### Resume Existing Project
+
+Clawd automatically detects existing `PROJECT_PLAN.md` files. Simply run `clawd` in the same directory:
+
+```bash
+clawd
+```
+
+It will load the existing plan and continue from where you left off. You can optionally provide a continuation prompt:
+
+```bash
+clawd "continue with the authentication system"
+```
 
 ### Perpetual Mode
 
+Enable continuous development that never stops:
+
 ```bash
-clawd --perpetual "Build a REST API with Express and PostgreSQL"
+clawd --perpetual "Build a web scraper"
 ```
 
-**Perpetual mode** runs indefinitely, continuously improving the project:
-- When the current plan is complete, Claude researches and specs out additional features
+**How it works:**
+- When the initial plan completes, Claude researches additional features
 - New phases are automatically added to the plan
-- Execution continues with the expanded plan
-- Great for iterative development and continuous improvement
+- Execution continues indefinitely with expanded scope
+- Stop anytime with `Ctrl+C`
 
-To stop perpetual mode, use `Ctrl+C`.
-
-### Interactive Mode
+Combine with interactive mode for full control:
 
 ```bash
-# Start with interactive mode (prompt will be asked in-app)
-clawd --interactive
-
-# Or provide a prompt upfront
-clawd --interactive "Build a REST API with Express and PostgreSQL"
+clawd --interactive --perpetual
 ```
 
-**Interactive mode** enables a full Terminal User Interface (TUI) that allows you to control Claude while the program is running:
+## CLI Reference
 
-**TUI Features:**
-- **Scrollable log area**: All output (Claude, logs, status) displays in a scrolling window
-- **Status bar**: Shows current phase, iteration, and keyboard commands
-- **Prompt counter**: Displays number of queued prompts
-- **Loading indicators**: Visual feedback during plan generation and long operations
-- **No console duplication**: Logs don't cause the interface to scroll or duplicate
-- **Auto-detection**: Automatically loads existing PROJECT_PLAN.md if found
+### Command Format
 
-**Keyboard Commands:**
-- Press `p` to queue a prompt for the next iteration
-- Press `SPACE` to pause execution (shows menu: continue/prompt/quit)
-- Press `ESC` to cancel the current running task (requires "yes" confirmation)
-- Press `?` or `h` to show help
-- Press `q` to quit
-- Press `Ctrl+C` to exit immediately
-- Use mouse wheel or arrow keys to scroll through logs
-
-**Prompt types:**
-- **Ask a question**: Query the current status, progress, or implementation details
-- **Request a plan change**: Modify the existing plan (preserves completed tasks)
-- **Add new scope**: Add new tasks or features to the plan
-- **Provide guidance**: Steer the AI's approach for upcoming tasks
-
-Prompts are queued and processed at the start of the next iteration (after the current Claude task completes).
-
-Interactive mode can be combined with perpetual mode:
 ```bash
-clawd --interactive --perpetual "Build a REST API with Express and PostgreSQL"
+clawd [prompt] [options]
 ```
 
-**Testing the TUI:**
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `[prompt]` | Project description (optional - omit to start interactive mode) |
+
+### Options
+
+| Option | Shorthand | Description |
+|--------|-----------|-------------|
+| `--interactive` | `-i` | Enable Terminal User Interface with keyboard controls |
+| `--perpetual` | `-p` | Continuously add features after completion |
+| `--help` | `-h` | Display help information |
+| `--version` | `-V` | Show version number |
+
+### Examples
+
+**Start interactive mode:**
 ```bash
-node test-tui.js
+clawd
+```
+
+**Direct prompt execution:**
+```bash
+clawd "Build a URL shortener service"
+```
+
+**Interactive mode with prompt:**
+```bash
+clawd -i "Create a markdown blog generator"
+```
+
+**Resume with continuation prompt:**
+```bash
+clawd "add user authentication"
+```
+
+**Perpetual development:**
+```bash
+clawd -p "Build a weather dashboard"
+```
+
+**Interactive + Perpetual:**
+```bash
+clawd -i -p "Create a recipe app"
 ```
 
 ## Project Plan Format
 
-The generated plan follows this structure:
+Clawd generates plans in the following structure:
 
 ```markdown
 # Project Brief
@@ -112,104 +199,202 @@ The generated plan follows this structure:
 [Clear end goal statement]
 
 # Phases
+
 ## Phase 1: Setup
-- [ ] Initialize project
+- [ ] Initialize project structure
 - [ ] Install dependencies
+- [ ] Configure environment
 
 ## Phase 2: Implementation
 - [ ] Create database schema
 - [ ] Build API endpoints
+- [ ] Implement business logic
+
+## Phase 3: Testing
+- [ ] Write unit tests
+- [ ] Add integration tests
+- [ ] Perform manual testing
 ```
+
+As tasks complete, checkboxes are automatically marked: `- [x] Completed task`
 
 ## Logs
 
-- **Console**: Colored output showing current progress
-- **clawd.log**: Detailed execution log
-- **clawd-error.log**: Error-specific log
+Clawd maintains detailed logs for debugging and progress review:
+
+- **Console/TUI** - Real-time colored output showing current progress
+- **clawd.log** - Detailed execution log of all operations
+- **clawd-error.log** - Error-specific logging for troubleshooting
 
 ## Architecture
 
-- **bin/clawd.js**: Binary entry point
-- **src/index.js**: CLI entry point using Commander
-- **src/planner.js**: Plan generation and parsing
-- **src/executor.js**: Phase execution loop
-- **src/evaluator.js**: Project completion evaluation
-- **src/expander.js**: Feature research and expansion (perpetual mode)
-- **src/interactive.js**: Interactive prompting system (PromptQueue, keyboard listener)
-- **src/tui.js**: Terminal User Interface using blessed (scrollable logs, status bar, prompt counter)
-- **src/logger.js**: Winston logger configuration with custom TUI transport
-- **prompts/**: Prompt templates for various operations
+Understanding Clawd's internal structure:
 
-## Requirements
+- **[bin/clawd.js](bin/clawd.js)** - Binary entry point
+- **[src/index.js](src/index.js)** - CLI argument parsing and orchestration
+- **[src/planner.js](src/planner.js)** - Plan generation and parsing logic
+- **[src/executor.js](src/executor.js)** - Phase execution loop
+- **[src/evaluator.js](src/evaluator.js)** - Project completion evaluation
+- **[src/expander.js](src/expander.js)** - Feature research and expansion (perpetual mode)
+- **[src/interactive.js](src/interactive.js)** - Interactive prompting system and PromptQueue
+- **[src/tui.js](src/tui.js)** - Terminal User Interface (blessed-based)
+- **[src/logger.js](src/logger.js)** - Winston logger with custom TUI transport
+- **[src/git-setup.js](src/git-setup.js)** - Automatic git repository initialization
+- **[prompts/](prompts/)** - Prompt templates for various operations
 
-- Node.js (ESM support)
-- Claude Code CLI installed and available in PATH
+## Development & Publishing
 
-## Release Process
+### Setup for Development
 
-This project uses npm scripts to automate the release process.
+Clone and link the package locally:
 
-### Scripts
+```bash
+git clone <repository-url>
+cd clawd
+npm install
+npm link
+```
 
-- `npm run changelog` - Generate/update CHANGELOG.md from git commits and tags
-- `npm run tag` - Create a git tag based on package.json version
-- `npm run release` - Complete release: create tag, push tag to origin, and publish to npm
+This makes the `clawd` command available globally from your local development copy.
 
-### Creating a Release
+### Testing
 
-1. **Update the version** in package.json (or use `npm version`):
-   ```bash
-   npm version patch  # or minor, major
-   ```
-   This automatically runs the `changelog` script and updates CHANGELOG.md
+Run the test suite:
 
-2. **Review the generated CHANGELOG.md** to ensure it looks correct
+```bash
+npm test
+```
 
-3. **Commit the version changes**:
-   ```bash
-   git add package.json CHANGELOG.md
-   git commit -m "Bump version to x.x.x"
-   ```
+Test the TUI specifically:
 
-4. **Log in to npm** (first time only):
-   ```bash
-   npm login
-   ```
+```bash
+node test-tui.js
+```
 
-5. **Run the release script**:
-   ```bash
-   npm run release
-   ```
-   This will:
-   - Create a git tag `vX.X.X` based on package.json version
-   - Push the tag to the remote repository
-   - Publish the package to npm
+## Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+### Commit Messages
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint. All commit messages must follow this format:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+- `feat:` - A new feature
+- `fix:` - A bug fix
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, semicolons, etc.)
+- `refactor:` - Code refactoring without changing functionality
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks (dependencies, build config, etc.)
+
+**Examples:**
+```bash
+git commit -m "feat: add perpetual mode for continuous development"
+git commit -m "fix(tui): resolve scrolling issue in log display"
+git commit -m "docs: update README with installation instructions"
+git commit -m "refactor: simplify plan parsing logic"
+```
+
+**Scope** (optional) can be any component: `cli`, `tui`, `planner`, `executor`, etc.
+
+### Commit Validation
+
+Commitlint is configured with husky to validate commit messages automatically. If your commit message doesn't follow the conventional format, the commit will be rejected with a helpful error message.
+
+### Pull Requests
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Make your changes following conventional commits
+4. Run tests (`npm test`)
+5. Push to your fork and submit a pull request
+
+### Release Process
+
+Clawd uses automated scripts for releases:
+
+#### 1. Update Version
+
+```bash
+npm version patch  # For bug fixes (0.0.x)
+npm version minor  # For new features (0.x.0)
+npm version major  # For breaking changes (x.0.0)
+```
+
+This automatically:
+- Updates `package.json`
+- Generates/updates `CHANGELOG.md`
+- Creates a git commit with the version bump
+
+#### 2. Review Changes
+
+Check the generated changelog:
+
+```bash
+cat CHANGELOG.md
+```
+
+Make any manual edits if needed, then commit:
+
+```bash
+git add CHANGELOG.md
+git commit --amend
+```
+
+#### 3. Login to npm (First Time Only)
+
+```bash
+npm login
+```
+
+#### 4. Publish Release
+
+```bash
+npm run release
+```
+
+This will:
+- Create a git tag (`vX.X.X`)
+- Push the tag to the remote repository
+- Publish the package to npm
 
 ### Manual Release Steps
 
-If you prefer to run steps individually:
+If you prefer granular control:
 
 ```bash
-# 1. Generate changelog
+# Generate changelog
 npm run changelog
 
-# 2. Commit changes
+# Review and commit
 git add CHANGELOG.md
 git commit -m "Update changelog for vX.X.X"
 
-# 3. Create and push tag
+# Create and push tag
 npm run tag
 git push origin vX.X.X
 
-# 4. Publish to npm
+# Publish to npm
 npm publish
 ```
 
-### Changelog Format
+### Available Scripts
 
-The changelog follows [Keep a Changelog](https://keepachangelog.com/) format and automatically categorizes commits:
-- **Added**: Commits starting with "add" or "feat"
-- **Changed**: Commits starting with "update", "change", or "refactor"
-- **Fixed**: Commits starting with "fix"
-- **Other**: All other commits
-# clawd
+- `npm run changelog` - Generate/update CHANGELOG.md from git commits
+- `npm run tag` - Create git tag from package.json version
+- `npm run release` - Full release: tag + push + publish
+- `npm test` - Run test suite
+
+## License
+
+MIT
