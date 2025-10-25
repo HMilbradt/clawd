@@ -1,4 +1,6 @@
 import chalk from "chalk";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { loadAdapter } from "../adapters/loader.js";
 import * as complete from "../core/complete.js";
 import * as evaluate from "../core/eval.js";
@@ -21,6 +23,12 @@ export async function runAction(userPrompt, options) {
 			tui = initTUI();
 			setLoggerTUI(tui);
 			tui.showBanner("🤖 Clawd - Claude Code Orchestrator", "info");
+			tui.setHotkeysVisible(false); // Hide hotkeys during initialization
+			tui.startRuntime();
+			// Set perpetual mode from options if provided
+			if (options.perpetual) {
+				tui.setPerpetualMode(true);
+			}
 		} else {
 			console.log(chalk.bold.blue("\n🤖 Clawd - Claude Code Orchestrator\n"));
 		}
@@ -49,8 +57,18 @@ export async function runAction(userPrompt, options) {
 			}
 		}
 
-		// Get prompt if not provided
-		if (!userPrompt) {
+		// Check if a plan already exists
+		const planPath = path.join(process.cwd(), "PROJECT_PLAN.md");
+		let planExists = false;
+		try {
+			await fs.access(planPath);
+			planExists = true;
+		} catch {
+			planExists = false;
+		}
+
+		// Get prompt only if not provided and no plan exists
+		if (!userPrompt && !planExists) {
 			if (tui) {
 				userPrompt = await tui.prompt("What would you like to build?");
 				if (!userPrompt || !userPrompt.trim()) {
@@ -61,6 +79,15 @@ export async function runAction(userPrompt, options) {
 			} else {
 				console.error(chalk.red("\n❌ Error: Prompt is required\n"));
 				process.exit(1);
+			}
+		}
+
+		// If plan exists and no prompt provided, we'll load the existing plan
+		if (planExists && !userPrompt) {
+			if (tui) {
+				tui.log("Loading existing plan...", "info");
+			} else {
+				console.log(chalk.yellow("Loading existing plan..."));
 			}
 		}
 
@@ -77,6 +104,14 @@ export async function runAction(userPrompt, options) {
 			tui.log("✓ Plan loaded", "success");
 			tui.log(`Project: ${planObj.brief}`, "info");
 			tui.log(`Goal: ${planObj.goal}`, "info");
+
+			// Calculate total steps
+			const totalSteps = planObj.tasks ? planObj.tasks.length : 0;
+			tui.updateStats({ stepsComplete: 0, totalSteps });
+
+			// Initialization complete - show hotkeys and enable interactive mode
+			tui.setHotkeysVisible(true);
+			tui.updateStatus({ interactive: true });
 		} else {
 			console.log(chalk.green("✓ Plan loaded"));
 			console.log(chalk.cyan("Project:"), planObj.brief);
@@ -117,7 +152,12 @@ export async function runAction(userPrompt, options) {
 						console.log(chalk.green.bold("\n🎉 PROJECT COMPLETE!\n"));
 					}
 
-					if (!options.perpetual) {
+					// Check perpetual mode from TUI if in interactive mode, otherwise use options
+					const perpetualEnabled = tui
+						? tui.isPerpetualMode()
+						: options.perpetual;
+
+					if (!perpetualEnabled) {
 						break;
 					}
 
@@ -131,6 +171,15 @@ export async function runAction(userPrompt, options) {
 					// Reload plan to get new tasks
 					const reloadedPlan = await plan.load();
 					planObj.tasks = reloadedPlan.tasks;
+
+					// Update step counts after reload
+					if (tui) {
+						const totalSteps = planObj.tasks ? planObj.tasks.length : 0;
+						const completedCount = planObj.tasks
+							? planObj.tasks.filter((t) => t.done).length
+							: 0;
+						tui.updateStats({ stepsComplete: completedCount, totalSteps });
+					}
 					continue;
 				}
 
@@ -143,6 +192,15 @@ export async function runAction(userPrompt, options) {
 
 				const reloadedPlan = await plan.load();
 				planObj.tasks = reloadedPlan.tasks;
+
+				// Update step counts after reload
+				if (tui) {
+					const totalSteps = planObj.tasks ? planObj.tasks.length : 0;
+					const completedCount = planObj.tasks
+						? planObj.tasks.filter((t) => t.done).length
+						: 0;
+					tui.updateStats({ stepsComplete: completedCount, totalSteps });
+				}
 				continue;
 			}
 
@@ -187,6 +245,12 @@ export async function runAction(userPrompt, options) {
 
 				if (tui) {
 					tui.log("✓ Task complete", "success");
+					// Update steps complete count
+					const completedCount = planObj.tasks
+						? planObj.tasks.filter((t) => t.done).length
+						: 0;
+					const totalSteps = planObj.tasks ? planObj.tasks.length : 0;
+					tui.updateStats({ stepsComplete: completedCount, totalSteps });
 				} else {
 					console.log(chalk.green("✓ Task complete"));
 				}
