@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/HMilbradt/clawd/compare/v1.0.1...v1.0.2) (2025-10-25)
+
+
+### Bug Fixes
+
+* patch broken tui ([#2](https://github.com/HMilbradt/clawd/issues/2)) ([417abcd](https://github.com/HMilbradt/clawd/commit/417abcd56b990e413d6768dfeaa1314ce335c556))
+
 ## [1.0.1](https://github.com/HMilbradt/clawd/compare/v1.0.0...v1.0.1) (2025-10-25)
 
 
