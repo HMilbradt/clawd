@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import Mustache from "mustache";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import logger from "./logger.js";
@@ -50,13 +51,10 @@ export async function loadPrompt(
 		}
 	}
 
-	// Replace all {{variableName}} with values from variables object
-	for (const [key, value] of Object.entries(variables)) {
-		const placeholder = new RegExp(`{{${key}}}`, "g");
-		template = template.replace(placeholder, value);
-	}
+	// Render template using Mustache
+	const rendered = Mustache.render(template, variables);
 
-	return template;
+	return rendered;
 }
 
 /**

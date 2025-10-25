@@ -66,11 +66,11 @@ const errorStream = fs.createWriteStream(
 // Create a multistream logger
 const logger = pino(
 	{
-		level: "info",
+		level: process.env.LOG_LEVEL || "debug",
 		timestamp: pino.stdTimeFunctions.isoTime,
 	},
 	pino.multistream([
-		{ level: "info", stream: fileStream },
+		{ level: "debug", stream: fileStream },
 		{ level: "error", stream: errorStream },
 		{ level: "info", stream: { write: (msg) => tuiDestination.write(msg) } },
 	]),

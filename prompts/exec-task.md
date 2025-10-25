@@ -14,3 +14,19 @@ IMPORTANT: The task was previously attempted but did not pass evaluation. Addres
 {{/feedback}}
 
 Complete this specific task. Focus only on this task and ensure it is fully implemented.
+
+IMPORTANT: When you have completed this task, mark it as complete in the PROJECT_PLAN.md file by changing the checkbox from `- [ ]` to `- [x]` for this specific task. You must update the plan file yourself.
+
+DELIVERABLE REQUIREMENTS:
+- Every task MUST produce a concrete deliverable (code, documentation, configuration, etc.)
+- Research tasks must save findings to a document
+- Planning tasks must save the plan to a document
+- Analysis tasks must save the analysis results to a document
+- Design tasks must save design documents, diagrams, or specifications
+- Implementation tasks must produce working code
+- Testing tasks must produce test files and test results
+
+OUTPUT ORGANIZATION:
+- Store research, planning, analysis, design docs, and other non-coding outputs in the /docs folder (unless the task specifies otherwise)
+- Store code in appropriate directories based on the project structure
+- Ensure all deliverables are saved to files - nothing should be "discussed" or "considered" without being documented

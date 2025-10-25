@@ -20,6 +20,8 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 	 * @returns {Promise<string>} - Claude's response
 	 */
 	async execute(prompt, _captureOutput = true) {
+		logger.debug("LLM Input (execute):", { prompt });
+
 		return new Promise((resolve, reject) => {
 			const claude = spawn(this.command, [...this.args, "-p", prompt], {
 				stdio: ["pipe", "pipe", "pipe"],
@@ -60,6 +62,12 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 						command: `${this.command} ${this.args.join(" ")} -p [prompt]`,
 					});
 
+					logger.debug("LLM Output (execute - error):", {
+						exitCode: code,
+						output: fullOutput || "(empty)",
+						error: fullError || "(empty)",
+					});
+
 					// Create detailed error message
 					const errorDetails = [];
 					if (fullOutput) errorDetails.push(`stdout: ${fullOutput}`);
@@ -75,6 +83,7 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 					return;
 				}
 
+				logger.debug("LLM Output (execute - success):", { output });
 				resolve(output);
 			});
 		});
@@ -87,6 +96,8 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 	 * @returns {Promise<{exitCode: number, output: string}>}
 	 */
 	async executeWithTUI(prompt, tui) {
+		logger.debug("LLM Input (executeWithTUI):", { prompt });
+
 		return new Promise((resolve) => {
 			const stdioConfig = tui ? ["pipe", "pipe", "pipe"] : "inherit";
 
@@ -118,6 +129,11 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 				if (exitCode !== 0) {
 					logger.error(`Claude process exited with code ${exitCode}`);
 				}
+
+				logger.debug("LLM Output (executeWithTUI):", {
+					exitCode: exitCode || 0,
+					output,
+				});
 
 				resolve({ exitCode: exitCode || 0, output });
 			});

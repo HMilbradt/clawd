@@ -33,13 +33,19 @@ export async function executeTask(
 	logger.info(`Executing task: ${task.description}`);
 
 	// Build execution prompt with optional feedback from previous attempt
-	const prompt = await loadPrompt("exec-task", {
+	const promptVars = {
 		projectBrief,
 		goal,
 		phaseName: task.phase,
 		stepDescription: task.description,
-		feedback: task.feedback || "",
-	});
+	};
+
+	// Only include feedback if it exists (Mustache conditionals require truthy values)
+	if (task.feedback) {
+		promptVars.feedback = task.feedback;
+	}
+
+	const prompt = await loadPrompt("exec-task", promptVars);
 
 	// Execute pre:exec hook
 	const context = await hookManager.execute(
