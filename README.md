@@ -23,7 +23,9 @@ In short: **Clawd lets you use your Claude Pro subscription to build entire proj
 - **📊 Progress Tracking** - Real-time updates to plan files with checkboxes showing completion status
 - **♾️ Perpetual Mode** - Continuously researches and adds new features when projects complete
 - **🖥️ Interactive TUI** - Full terminal interface with scrollable logs, keyboard controls, and live prompting
-- **✅ Smart Evaluation** - Automatically evaluates progress and determines when projects are complete
+- **✅ Smart Evaluation** - Automatically evaluates progress and determines when tasks are complete
+- **🔌 Plugin System** - Extend Clawd with custom hooks and behaviors
+- **📝 Configurable Prompts** - Override any prompt template to customize Claude's behavior
 
 ## Prerequisites
 
@@ -55,143 +57,26 @@ clawd "Build a REST API with Express and PostgreSQL"
 Clawd will:
 1. Generate a `PROJECT_PLAN.md` with phases and tasks
 2. Execute each task using Claude Code
-3. Track progress with checkboxes
-4. Continue until complete
+3. Evaluate task completion
+4. Track progress with checkboxes
+5. Continue until complete
 
-## Usage
+## Architecture
 
-### Interactive Mode (Default)
+Clawd follows a **Plan → Exec → Eval → Complete** workflow:
 
-Clawd runs with an interactive Terminal User Interface by default:
+1. **Plan** - Initialize or load project plan, parse into tasks
+2. **Exec** - Execute each task with Claude Code
+3. **Eval** - Evaluate if task was completed successfully
+4. **Complete** - When all tasks are done, evaluate if project is truly complete
 
-```bash
-clawd
-```
+Each step is hookable via the plugin system, allowing you to customize Clawd's behavior.
 
-**TUI Features:**
-- Scrollable log area showing all output
-- Status bar with current phase and keyboard shortcuts
-- Prompt counter displaying queued prompts
-- Loading indicators for long operations
-- Auto-detection of existing `PROJECT_PLAN.md`
+## Core Concepts
 
-**Keyboard Commands:**
-- `p` - Queue a prompt for the next iteration
-- `SPACE` - Pause execution (shows menu: continue/prompt/quit)
-- `ESC` - Cancel current task (requires confirmation)
-- `?` or `h` - Show help
-- `q` - Quit
-- `Ctrl+C` - Exit immediately
-- Mouse wheel or arrow keys - Scroll through logs
+### Project Plans
 
-You can also provide a prompt upfront:
-
-```bash
-clawd "Build a task management app"
-```
-
-### Non-Interactive Mode
-
-To disable the terminal UI and use standard output instead:
-
-```bash
-clawd --non-interactive "Create a CLI tool for managing todos"
-```
-
-Output appears in the console and is logged to `clawd.log`.
-
-### Resume Existing Project
-
-Clawd automatically detects existing `PROJECT_PLAN.md` files. Simply run `clawd` in the same directory:
-
-```bash
-clawd
-```
-
-It will load the existing plan and continue from where you left off. You can optionally provide a continuation prompt:
-
-```bash
-clawd "continue with the authentication system"
-```
-
-### Perpetual Mode
-
-Enable continuous development that never stops:
-
-```bash
-clawd --perpetual "Build a web scraper"
-```
-
-**How it works:**
-- When the initial plan completes, Claude researches additional features
-- New phases are automatically added to the plan
-- Execution continues indefinitely with expanded scope
-- Stop anytime with `Ctrl+C`
-
-Combine with non-interactive mode if you prefer standard output:
-
-```bash
-clawd --non-interactive --perpetual
-```
-
-## CLI Reference
-
-### Command Format
-
-```bash
-clawd [prompt] [options]
-```
-
-### Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `[prompt]` | Project description (optional - you will be prompted at startup if omitted) |
-
-### Options
-
-| Option | Shorthand | Description |
-|--------|-----------|-------------|
-| `--non-interactive` | | Disable terminal UI and use standard output mode |
-| `--perpetual` | `-p` | Continuously add features after completion |
-| `--help` | `-h` | Display help information |
-| `--version` | `-V` | Show version number |
-
-### Examples
-
-**Start with interactive TUI (default):**
-```bash
-clawd
-```
-
-**Direct prompt with TUI:**
-```bash
-clawd "Build a URL shortener service"
-```
-
-**Non-interactive mode:**
-```bash
-clawd --non-interactive "Create a markdown blog generator"
-```
-
-**Resume with continuation prompt:**
-```bash
-clawd "add user authentication"
-```
-
-**Perpetual development:**
-```bash
-clawd -p "Build a weather dashboard"
-```
-
-**Non-interactive + Perpetual:**
-```bash
-clawd --non-interactive -p "Create a recipe app"
-```
-
-## Project Plan Format
-
-Clawd generates plans in the following structure:
+Plans are stored in `PROJECT_PLAN.md`:
 
 ```markdown
 # Project Brief
@@ -211,44 +96,258 @@ Clawd generates plans in the following structure:
 - [ ] Create database schema
 - [ ] Build API endpoints
 - [ ] Implement business logic
-
-## Phase 3: Testing
-- [ ] Write unit tests
-- [ ] Add integration tests
-- [ ] Perform manual testing
 ```
 
 As tasks complete, checkboxes are automatically marked: `- [x] Completed task`
 
+### Plugins
+
+Create plugins in `.clawd/plugins/` to hook into Clawd's lifecycle:
+
+```javascript
+// .clawd/plugins/my-plugin.js
+export default {
+  name: 'my-plugin',
+  hooks: {
+    'post:exec': async (context) => {
+      // Run after each task execution
+      console.log(`Task completed: ${context.task.description}`)
+      return context
+    }
+  }
+}
+```
+
+**Available hooks:**
+- `pre:plan` / `post:plan` - Before/after plan initialization
+- `pre:exec` / `post:exec` - Before/after task execution
+- `pre:eval` / `post:eval` - Before/after task evaluation
+- `pre:complete` / `post:complete` - Before/after project completion check
+
+### Configurable Prompts
+
+Override any prompt by creating `.clawd/prompts/<name>.md`:
+
+```bash
+# Copy a prompt to customize it
+clawd prompts copy plan-init
+
+# Edit .clawd/prompts/plan-init.md
+# Your changes will be used instead of the built-in prompt
+```
+
+## CLI Reference
+
+### Main Command
+
+```bash
+clawd [prompt] [options]
+```
+
+**Arguments:**
+- `[prompt]` - Project description (optional - you will be prompted if omitted)
+
+**Options:**
+- `-p, --perpetual` - Enable perpetual mode (continuously add features)
+- `--non-interactive` - Disable terminal UI, use standard output
+
+**Examples:**
+```bash
+clawd                                    # Interactive mode with prompt
+clawd "Build a task manager"             # Direct prompt
+clawd --non-interactive "Build an API"   # Non-interactive mode
+clawd -p "Build a blog"                  # Perpetual mode
+```
+
+### Prompts Management
+
+```bash
+# List all available prompts
+clawd prompts list
+
+# Copy a specific prompt for editing
+clawd prompts copy plan-init
+
+# Copy all prompts
+clawd prompts copy --all
+```
+
+### Plugin Management
+
+```bash
+# List loaded plugins and their hooks
+clawd plugins list
+
+# Create a new plugin from template
+clawd plugins create my-plugin
+```
+
+### Project Initialization
+
+```bash
+# Initialize .clawd/ directory structure
+clawd init
+```
+
+This creates:
+- `.clawd/prompts/` - For custom prompt overrides
+- `.clawd/plugins/` - For custom plugins
+
+## Plugin Examples
+
+### Git Plugin
+
+Automatically commit after each successful task:
+
+```javascript
+// .clawd/plugins/git.js
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
+
+export default {
+  name: 'git',
+  hooks: {
+    'post:exec': async (context) => {
+      if (context.exitCode === 0) {
+        try {
+          await execAsync('git add -A')
+          await execAsync(`git commit -m "feat: ${context.task.description}"`)
+          console.log('✓ Changes committed')
+        } catch (error) {
+          console.log('No changes to commit')
+        }
+      }
+      return context
+    }
+  }
+}
+```
+
+### Notification Plugin
+
+Send notifications when tasks complete:
+
+```javascript
+// .clawd/plugins/notifications.js
+import notifier from 'node-notifier'
+
+export default {
+  name: 'notifications',
+  hooks: {
+    'post:eval': async (context) => {
+      if (context.result.complete) {
+        notifier.notify({
+          title: 'Clawd',
+          message: `Task completed: ${context.task.description}`
+        })
+      }
+      return context
+    },
+    'post:complete': async (context) => {
+      if (context.isComplete) {
+        notifier.notify({
+          title: 'Clawd',
+          message: '🎉 Project Complete!'
+        })
+      }
+      return context
+    }
+  }
+}
+```
+
+### Logging Plugin
+
+Enhanced logging with timestamps:
+
+```javascript
+// .clawd/plugins/detailed-logging.js
+import fs from 'fs/promises'
+
+export default {
+  name: 'detailed-logging',
+  hooks: {
+    'post:exec': async (context) => {
+      const log = {
+        timestamp: new Date().toISOString(),
+        task: context.task.description,
+        exitCode: context.exitCode,
+        output: context.output
+      }
+
+      await fs.appendFile(
+        'clawd-detailed.log',
+        JSON.stringify(log) + '\n'
+      )
+
+      return context
+    }
+  }
+}
+```
+
+## Perpetual Mode
+
+Enable continuous development that never stops:
+
+```bash
+clawd --perpetual "Build a web scraper"
+```
+
+**How it works:**
+- When the initial plan completes, Claude evaluates the entire project
+- If more work is needed, Claude adds new phases/tasks to the plan
+- Execution continues indefinitely with expanded scope
+- Stop anytime with `Ctrl+C`
+
+## Interactive TUI Features
+
+**TUI Features:**
+- Scrollable log area showing all output
+- Status bar with current phase and keyboard shortcuts
+- Loading indicators for long operations
+- Auto-detection of existing `PROJECT_PLAN.md`
+
+**Keyboard Commands:**
+- `p` - Queue a prompt for the next iteration
+- `SPACE` - Pause execution (shows menu: continue/prompt/quit)
+- `ESC` - Cancel current task (requires confirmation)
+- `?` or `h` - Show help
+- `q` - Quit
+- `Ctrl+C` - Exit immediately
+- Mouse wheel or arrow keys - Scroll through logs
+
 ## Logs
 
-Clawd maintains detailed logs for debugging and progress review:
+Clawd maintains detailed logs:
 
 - **Console/TUI** - Real-time colored output showing current progress
 - **clawd.log** - Detailed execution log of all operations
 - **clawd-error.log** - Error-specific logging for troubleshooting
 
-## Architecture
+## File Structure
 
-Understanding Clawd's internal structure:
+```
+clawd/
+├── src/
+│   ├── core/              # Core modules (plan, exec, eval, complete)
+│   ├── plugin-system/     # Plugin loader and hook manager
+│   ├── index.js           # CLI entry point
+│   ├── prompt-loader.js   # Prompt template system
+│   ├── logger.js          # Logging system
+│   └── tui.js             # Terminal UI
+├── prompts/               # Built-in prompt templates
+├── templates/             # Plugin template
+└── .clawd/                # User customizations (created in projects)
+    ├── prompts/           # User prompt overrides
+    └── plugins/           # User plugins
+```
 
-- **[bin/clawd.js](bin/clawd.js)** - Binary entry point
-- **[src/index.js](src/index.js)** - CLI argument parsing and orchestration
-- **[src/planner.js](src/planner.js)** - Plan generation and parsing logic
-- **[src/executor.js](src/executor.js)** - Phase execution loop
-- **[src/evaluator.js](src/evaluator.js)** - Project completion evaluation
-- **[src/expander.js](src/expander.js)** - Feature research and expansion (perpetual mode)
-- **[src/interactive.js](src/interactive.js)** - Interactive prompting system and PromptQueue
-- **[src/tui.js](src/tui.js)** - Terminal User Interface (blessed-based)
-- **[src/logger.js](src/logger.js)** - Winston logger with custom TUI transport
-- **[src/git-setup.js](src/git-setup.js)** - Automatic git repository initialization
-- **[prompts/](prompts/)** - Prompt templates for various operations
-
-## Development & Publishing
+## Development & Contributing
 
 ### Setup for Development
-
-Clone and link the package locally:
 
 ```bash
 git clone <repository-url>
@@ -257,145 +356,305 @@ npm install
 npm link
 ```
 
-This makes the `clawd` command available globally from your local development copy.
-
 ### Testing
-
-Run the test suite:
 
 ```bash
 npm test
 ```
 
-Test the TUI specifically:
-
-```bash
-node test-tui.js
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
 ### Commit Messages
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint. All commit messages must follow this format:
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
-```
-
-**Types:**
-- `feat:` - A new feature
-- `fix:` - A bug fix
-- `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, semicolons, etc.)
-- `refactor:` - Code refactoring without changing functionality
-- `perf:` - Performance improvements
-- `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks (dependencies, build config, etc.)
-
-**Examples:**
-```bash
-git commit -m "feat: add perpetual mode for continuous development"
-git commit -m "fix(tui): resolve scrolling issue in log display"
-git commit -m "docs: update README with installation instructions"
-git commit -m "refactor: simplify plan parsing logic"
-```
-
-**Scope** (optional) can be any component: `cli`, `tui`, `planner`, `executor`, etc.
-
-### Commit Validation
-
-Commitlint is configured with husky to validate commit messages automatically. If your commit message doesn't follow the conventional format, the commit will be rejected with a helpful error message.
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Make your changes following conventional commits
-4. Run tests (`npm test`)
-5. Push to your fork and submit a pull request
-
-### Release Process
-
-Clawd uses automated scripts for releases:
-
-#### 1. Update Version
+This project uses [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```bash
-npm version patch  # For bug fixes (0.0.x)
-npm version minor  # For new features (0.x.0)
-npm version major  # For breaking changes (x.0.0)
+git commit -m "feat: add new feature"
+git commit -m "fix: resolve bug"
+git commit -m "docs: update README"
 ```
 
-This automatically:
-- Updates `package.json`
-- Generates/updates `CHANGELOG.md`
-- Creates a git commit with the version bump
+## Advanced Patterns
 
-#### 2. Review Changes
+### Custom LLM Adapters
 
-Check the generated changelog:
+Clawd uses an adapter pattern to support any LLM provider. By default, it uses the Claude Code CLI, but you can easily swap in a different LLM.
+
+#### Creating a Custom Adapter
+
+Create a file at `.clawd/adapter.js` in your project:
+
+```javascript
+import { LLMAdapter } from "../node_modules/clawd/src/adapters/base.js";
+
+export default class MyLLMAdapter extends LLMAdapter {
+  async execute(prompt, captureOutput = true) {
+    // Call your LLM API and return the response
+    const response = await fetch('https://api.your-llm.com/v1/chat', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.API_KEY}` },
+      body: JSON.stringify({ prompt })
+    });
+    return await response.text();
+  }
+
+  async executeWithTUI(prompt, tui) {
+    const output = await this.execute(prompt);
+    if (tui) tui.writeOutput(output);
+    return { exitCode: 0, output };
+  }
+
+  getName() {
+    return "My Custom LLM";
+  }
+}
+```
+
+#### Adapter Examples
+
+**OpenAI GPT-4:**
+```javascript
+export default class OpenAIAdapter extends LLMAdapter {
+  async execute(prompt) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+}
+```
+
+**Local Ollama:**
+```javascript
+export default class OllamaAdapter extends LLMAdapter {
+  async execute(prompt) {
+    const response = await fetch('http://localhost:11434/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'codellama',
+        prompt: prompt,
+        stream: false
+      })
+    });
+    const data = await response.json();
+    return data.response;
+  }
+}
+```
+
+### Using runPrompt() in Plugins
+
+All plugin hooks receive a `runPrompt()` function in their context, allowing plugins to execute additional LLM queries:
+
+```javascript
+export default {
+  name: 'my-plugin',
+  hooks: {
+    'post:eval': async (context) => {
+      if (!context.result.complete) {
+        // Use the current LLM adapter to get suggestions
+        const suggestion = await context.runPrompt(
+          `Suggest a fix for: ${context.result.feedback}`
+        );
+        context.logger.info(`Suggestion: ${suggestion}`);
+      }
+      return context;
+    }
+  }
+}
+```
+
+#### Advanced Plugin Patterns
+
+**Self-Healing Plugin** - Automatically attempts to fix failed tasks:
+
+```javascript
+export default {
+  name: 'self-healing',
+  hooks: {
+    'post:eval': async (context) => {
+      if (!context.result.complete && context.task.retryCount < 3) {
+        context.logger.info('[self-healing] Analyzing failure...');
+
+        const analysis = await context.runPrompt(`
+          A task failed with this feedback: "${context.result.feedback}"
+
+          Analyze the issue and provide a specific action plan to fix it.
+          Be concise and actionable.
+        `);
+
+        context.logger.info(`[self-healing] Analysis: ${analysis}`);
+
+        // Store retry count on task
+        context.task.retryCount = (context.task.retryCount || 0) + 1;
+      }
+      return context;
+    }
+  }
+}
+```
+
+**Code Review Plugin** - Reviews code after each task:
+
+```javascript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+export default {
+  name: 'code-reviewer',
+  hooks: {
+    'post:exec': async (context) => {
+      if (context.exitCode === 0) {
+        // Get git diff of changes
+        const { stdout } = await execAsync('git diff HEAD');
+
+        if (stdout) {
+          const review = await context.runPrompt(`
+            Review this code change for quality and potential issues:
+
+            ${stdout}
+
+            Provide a brief review focusing on:
+            - Code quality
+            - Potential bugs
+            - Best practices
+          `);
+
+          context.logger.info(`[code-review] ${review}`);
+        }
+      }
+      return context;
+    }
+  }
+}
+```
+
+**Adaptive Planning Plugin** - Adjusts plan based on progress:
+
+```javascript
+export default {
+  name: 'adaptive-planner',
+  hooks: {
+    'post:complete': async (context) => {
+      if (!context.isComplete) {
+        // Ask LLM to suggest plan improvements
+        const suggestion = await context.runPrompt(`
+          Project: ${context.projectBrief}
+          Goal: ${context.goal}
+
+          The project evaluation shows it's incomplete.
+          Current plan has ${context.plan.tasks.length} tasks.
+
+          Suggest 2-3 additional tasks that would help complete the project.
+          Format as a numbered list.
+        `);
+
+        context.logger.info(`[adaptive-planner] Suggestions: ${suggestion}`);
+      }
+      return context;
+    }
+  }
+}
+```
+
+**Context-Aware Prompt Modifier** - Modifies prompts before execution:
+
+```javascript
+export default {
+  name: 'context-enhancer',
+  hooks: {
+    'pre:exec': async (context) => {
+      // Add project-specific context to every prompt
+      const projectContext = `
+        IMPORTANT: This project uses TypeScript with strict mode.
+        Always include type annotations and handle errors properly.
+      `;
+
+      context.prompt = projectContext + '\n\n' + context.prompt;
+
+      context.logger.debug('[context-enhancer] Enhanced prompt with project context');
+      return context;
+    }
+  }
+}
+```
+
+### Configurable Prompts
+
+Override any built-in prompt by creating matching files in `.clawd/prompts/`:
 
 ```bash
-cat CHANGELOG.md
+# Copy a prompt to customize it
+clawd prompts copy plan-init
+
+# Edit .clawd/prompts/plan-init.md
+# Add your custom instructions, examples, or constraints
 ```
 
-Make any manual edits if needed, then commit:
+**Example custom prompt** (`.clawd/prompts/plan-init.md`):
+
+```markdown
+Create a project plan for: {{userPrompt}}
+
+IMPORTANT CONSTRAINTS:
+- Use Python 3.11+
+- Follow PEP 8 style guide
+- Include comprehensive docstrings
+- Add type hints to all functions
+- Use pytest for all tests
+
+Format the plan as follows:
+# Project Brief
+[Description]
+
+# Goal
+[End goal]
+
+# Phases
+## Phase 1: [Name]
+- [ ] Task 1
+- [ ] Task 2
+```
+
+## Troubleshooting
+
+### Claude Code not found
+
+Ensure Claude Code CLI is installed and in your PATH:
 
 ```bash
-git add CHANGELOG.md
-git commit --amend
+which claude
 ```
 
-#### 3. Login to npm (First Time Only)
+If not found, install from: https://docs.claude.com/en/docs/claude-code
 
-```bash
-npm login
+### Rate limiting
+
+Clawd automatically handles rate limits by waiting and retrying. You'll see wait time estimates in the output.
+
+### Plugins not loading
+
+Ensure your plugin exports a default object with `name` and `hooks`:
+
+```javascript
+export default {
+  name: 'my-plugin',
+  hooks: {
+    // Your hooks here
+  }
+}
 ```
 
-#### 4. Publish Release
-
-```bash
-npm run release
-```
-
-This will:
-- Create a git tag (`vX.X.X`)
-- Push the tag to the remote repository
-- Publish the package to npm
-
-### Manual Release Steps
-
-If you prefer granular control:
-
-```bash
-# Generate changelog
-npm run changelog
-
-# Review and commit
-git add CHANGELOG.md
-git commit -m "Update changelog for vX.X.X"
-
-# Create and push tag
-npm run tag
-git push origin vX.X.X
-
-# Publish to npm
-npm publish
-```
-
-### Available Scripts
-
-- `npm run changelog` - Generate/update CHANGELOG.md from git commits
-- `npm run tag` - Create git tag from package.json version
-- `npm run release` - Full release: tag + push + publish
-- `npm test` - Run test suite
+Check `clawd.log` for plugin loading errors.
 
 ## License
 

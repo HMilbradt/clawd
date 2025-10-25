@@ -1,23 +1,30 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
 import chalk from "chalk";
+import { Command } from "commander";
 import fs from "fs/promises";
 import path from "path";
-import logger from "./logger.js";
-import { generatePlan, loadPlan } from "./planner.js";
-import { executePhases } from "./executor.js";
-import { initTUI } from "./tui.js";
-import { setLoggerTUI } from "./logger.js";
-import { setupProjectGit } from "./git-setup.js";
+import { loadAdapter } from "./adapters/loader.js";
+import * as complete from "./core/complete.js";
+import * as eval from "./core/eval.js";
+import * as exec from "./core/exec.js";
+import logger, { setLoggerTUI } from "./core/logger.js";
+import * as plan from "./core/plan.js";
+import {
+	copyPromptToUser,
+	listPrompts,
+} from "./core/prompt-loader.js";
+import { getTUI, initTUI } from "./core/tui.js";
+import { listPlugins, loadPlugins } from "./plugin-system/loader.js";
 
 const program = new Command();
 
 program
 	.name("clawd")
 	.description("Claude Code CLI Wrapper for multi-phase project execution")
-	.version("1.0.0");
+	.version("0.0.5");
 
+// Main execution command
 program
 	.argument(
 		"[prompt]",
@@ -31,140 +38,381 @@ program
 		"--non-interactive",
 		"Disable terminal UI and run in standard output mode",
 	)
-	.action(async (prompt, options) => {
-		try {
-			// Interactive mode is enabled by default (unless --non-interactive is specified)
-			const interactive = !options.nonInteractive;
+	.action(async (userPrompt, options) => {
+		await runMain(userPrompt, options);
+	});
 
-			// Initialize TUI immediately if in interactive mode
-			let tui = null;
-			if (interactive) {
-				tui = initTUI();
-				setLoggerTUI(tui);
-				tui.showBanner("🤖 Clawd - Claude Code Orchestrator", "info");
+// Prompts subcommand
+const promptsCmd = program.command("prompts").description("Manage prompts");
+
+promptsCmd
+	.command("list")
+	.description("List all available prompts")
+	.action(async () => {
+		const prompts = await listPrompts();
+
+		console.log(chalk.bold.blue("\n📝 Built-in Prompts:"));
+		for (const name of prompts.builtIn) {
+			const isOverridden = prompts.userOverrides.includes(name);
+			if (isOverridden) {
+				console.log(
+					chalk.yellow(`  • ${name} (overridden in .clawd/prompts/)`),
+				);
 			} else {
-				console.log(chalk.bold.blue("\n🤖 Clawd - Claude Code Orchestrator\n"));
+				console.log(chalk.white(`  • ${name}`));
 			}
+		}
 
-			let planContent;
-			let projectBrief = "";
-			let goal = "";
-
-			const planPath = path.join(process.cwd(), "PROJECT_PLAN.md");
-
-			// Check if PROJECT_PLAN.md exists
-			let planExists = false;
-			try {
-				await fs.access(planPath);
-				planExists = true;
-			} catch {
-				planExists = false;
+		if (prompts.userOverrides.length > 0) {
+			console.log(chalk.bold.blue("\n✏️  User Override Prompts:"));
+			for (const name of prompts.userOverrides) {
+				if (!prompts.builtIn.includes(name)) {
+					console.log(chalk.green(`  • ${name} (custom)`));
+				}
 			}
+		}
 
-			if (planExists) {
-				// Auto-detect and load existing plan
-				if (tui) {
-					tui.log("📋 Found existing PROJECT_PLAN.md", "info");
-					tui.log("✓ Loading existing plan", "success");
-				} else {
-					console.log(chalk.cyan("📋 Found existing PROJECT_PLAN.md"));
-					console.log(chalk.green("✓ Loading existing plan\n"));
-				}
-				planContent = await fs.readFile(planPath, "utf-8");
-			} else {
-				// Need to generate new plan - ask for prompt if not provided
-				if (!prompt) {
-					if (tui) {
-						prompt = await tui.prompt("What would you like to build?");
-						if (!prompt || !prompt.trim()) {
-							tui.log("No prompt provided. Exiting.", "error");
-							tui.destroy();
-							process.exit(1);
-						}
-					} else {
-						// This should never happen since we auto-enable interactive mode above
-						console.error(chalk.red("\n❌ Error: Prompt is required\n"));
-						process.exit(1);
-					}
-				}
+		console.log();
+	});
 
-				// Setup git repository before generating plan
-				if (tui) {
-					tui.log("Setting up git repository...", "info");
-				} else {
-					console.log(chalk.yellow("Setting up git repository...\n"));
-				}
-
+promptsCmd
+	.command("copy <name>")
+	.description("Copy a built-in prompt to .clawd/prompts/ for editing")
+	.option("--all", "Copy all prompts")
+	.action(async (name, options) => {
+		if (options.all) {
+			const prompts = await listPrompts();
+			console.log(
+				chalk.blue(`\nCopying ${prompts.builtIn.length} prompts...\n`),
+			);
+			for (const promptName of prompts.builtIn) {
 				try {
-					await setupProjectGit();
-					if (tui) {
-						tui.log("✓ Git repository ready", "success");
-					} else {
-						console.log(chalk.green("✓ Git repository ready\n"));
-					}
+					await copyPromptToUser(promptName);
+					console.log(chalk.green(`✓ Copied ${promptName}`));
 				} catch (error) {
-					logger.error(`Git setup failed: ${error.message}`);
-					if (tui) {
-						tui.log(
-							"⚠️  Git setup failed, continuing without git integration",
-							"warn",
-						);
-					} else {
-						console.log(
-							chalk.yellow(
-								"⚠️  Git setup failed, continuing without git integration\n",
-							),
-						);
-					}
-				}
-
-				// Generate new plan
-				if (tui) {
-					tui.log("Generating project plan...", "info");
-					tui.showLoadingIndicator("Generating plan");
-				} else {
-					console.log(chalk.yellow("Generating project plan...\n"));
-				}
-				planContent = await generatePlan(prompt);
-				if (tui) {
-					tui.hideLoadingIndicator();
-					tui.log("✓ Plan generated and saved", "success");
-				} else {
-					console.log(chalk.green("✓ Plan generated and saved\n"));
+					console.log(chalk.red(`✗ Failed to copy ${promptName}: ${error.message}`));
 				}
 			}
-
-			// Extract project brief and goal from plan
-			const briefMatch = planContent.match(/# Project Brief\s+(.+?)(?=\n#|$)/s);
-			const goalMatch = planContent.match(/# Goal\s+(.+?)(?=\n#|$)/s);
-
-			if (briefMatch) projectBrief = briefMatch[1].trim();
-			if (goalMatch) goal = goalMatch[1].trim();
-
-			if (tui) {
-				tui.log(`Project Brief: ${projectBrief}`, "info");
-				tui.log(`Goal: ${goal}`, "info");
-			} else {
-				console.log(chalk.cyan("Project Brief:"), projectBrief);
-				console.log(chalk.cyan("Goal:"), goal);
-				console.log();
+			console.log(
+				chalk.green("\n✓ All prompts copied to .clawd/prompts/\n"),
+			);
+		} else {
+			try {
+				const filePath = await copyPromptToUser(name);
+				console.log(
+					chalk.green(`\n✓ Copied ${name} to ${filePath}\n`),
+				);
+			} catch (error) {
+				console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
+				process.exit(1);
 			}
+		}
+	});
 
-			// Execute phases (TUI is already initialized, just pass the flag)
-			await executePhases(projectBrief, goal, options.perpetual, interactive);
+// Plugins subcommand
+const pluginsCmd = program.command("plugins").description("Manage plugins");
 
-			if (!options.perpetual) {
-				if (tui) {
-					tui.showBanner("✨ All done!", "success");
-				} else {
-					console.log(chalk.green.bold("\n✨ All done!\n"));
-				}
+pluginsCmd
+	.command("list")
+	.description("List loaded plugins and their hooks")
+	.action(() => {
+		const plugins = listPlugins();
+		const hookNames = Object.keys(plugins);
+
+		if (hookNames.length === 0) {
+			console.log(chalk.yellow("\nNo plugins loaded\n"));
+			return;
+		}
+
+		console.log(chalk.bold.blue("\n🔌 Loaded Plugins:\n"));
+		for (const [hookName, pluginNames] of Object.entries(plugins)) {
+			console.log(chalk.cyan(`  ${hookName}:`));
+			for (const pluginName of pluginNames) {
+				console.log(chalk.white(`    • ${pluginName}`));
 			}
+		}
+		console.log();
+	});
+
+pluginsCmd
+	.command("create <name>")
+	.description("Create a new plugin from template")
+	.action(async (name) => {
+		try {
+			// Read template
+			const templatePath = path.join(
+				new URL(".", import.meta.url).pathname,
+				"..",
+				"templates",
+				"plugin-template.js",
+			);
+			let template = await fs.readFile(templatePath, "utf-8");
+
+			// Replace {{PLUGIN_NAME}} with actual name
+			template = template.replace(/{{PLUGIN_NAME}}/g, name);
+
+			// Ensure .clawd/plugins directory exists
+			const pluginsDir = path.join(process.cwd(), ".clawd", "plugins");
+			await fs.mkdir(pluginsDir, { recursive: true });
+
+			// Write plugin file
+			const pluginPath = path.join(pluginsDir, `${name}.js`);
+			await fs.writeFile(pluginPath, template);
+
+			console.log(chalk.green(`\n✓ Created plugin: ${pluginPath}\n`));
+			console.log(
+				chalk.white("Edit the file to customize hook behavior.\n"),
+			);
 		} catch (error) {
-			logger.error(`Error: ${error.message}`);
-			console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
+			console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
 			process.exit(1);
 		}
 	});
+
+// Init command
+program
+	.command("init")
+	.description("Initialize .clawd/ directory structure")
+	.action(async () => {
+		try {
+			const clawdDir = path.join(process.cwd(), ".clawd");
+			const promptsDir = path.join(clawdDir, "prompts");
+			const pluginsDir = path.join(clawdDir, "plugins");
+			const logsDir = path.join(clawdDir, "logs");
+
+			await fs.mkdir(promptsDir, { recursive: true });
+			await fs.mkdir(pluginsDir, { recursive: true });
+			await fs.mkdir(logsDir, { recursive: true });
+
+			console.log(chalk.green("\n✓ Initialized .clawd/ directory\n"));
+			console.log(chalk.white("  Created:"));
+			console.log(chalk.white("    .clawd/prompts/"));
+			console.log(chalk.white("    .clawd/plugins/"));
+			console.log(chalk.white("    .clawd/logs/\n"));
+		} catch (error) {
+			console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
+			process.exit(1);
+		}
+	});
+
+/**
+ * Main execution function
+ */
+async function runMain(userPrompt, options) {
+	try {
+		const interactive = !options.nonInteractive;
+
+		// Initialize TUI if in interactive mode
+		let tui = null;
+		if (interactive) {
+			tui = initTUI();
+			setLoggerTUI(tui);
+			tui.showBanner("🤖 Clawd - Claude Code Orchestrator", "info");
+		} else {
+			console.log(chalk.bold.blue("\n🤖 Clawd - Claude Code Orchestrator\n"));
+		}
+
+		// Load LLM adapter
+		if (tui) {
+			tui.log("Loading LLM adapter...", "info");
+		}
+		const adapter = await loadAdapter();
+		if (tui) {
+			tui.log(`✓ Using adapter: ${adapter.getName()}`, "success");
+		} else {
+			console.log(chalk.green(`✓ Using adapter: ${adapter.getName()}`));
+		}
+
+		// Load plugins
+		if (tui) {
+			tui.log("Loading plugins...", "info");
+		}
+		const plugins = await loadPlugins();
+		if (plugins.length > 0) {
+			if (tui) {
+				tui.log(`✓ Loaded ${plugins.length} plugin(s)`, "success");
+			} else {
+				console.log(chalk.green(`✓ Loaded ${plugins.length} plugin(s)`));
+			}
+		}
+
+		// Get prompt if not provided
+		if (!userPrompt) {
+			if (tui) {
+				userPrompt = await tui.prompt("What would you like to build?");
+				if (!userPrompt || !userPrompt.trim()) {
+					tui.log("No prompt provided. Exiting.", "error");
+					tui.destroy();
+					process.exit(1);
+				}
+			} else {
+				console.error(chalk.red("\n❌ Error: Prompt is required\n"));
+				process.exit(1);
+			}
+		}
+
+		// Initialize plan
+		if (tui) {
+			tui.log("Initializing project plan...", "info");
+		} else {
+			console.log(chalk.yellow("Initializing project plan..."));
+		}
+
+		const planObj = await plan.init(userPrompt, options);
+
+		if (tui) {
+			tui.log("✓ Plan loaded", "success");
+			tui.log(`Project: ${planObj.brief}`, "info");
+			tui.log(`Goal: ${planObj.goal}`, "info");
+		} else {
+			console.log(chalk.green("✓ Plan loaded"));
+			console.log(chalk.cyan("Project:"), planObj.brief);
+			console.log(chalk.cyan("Goal:"), planObj.goal);
+			console.log();
+		}
+
+		// Main execution loop
+		let iteration = 0;
+
+		while (true) {
+			iteration++;
+			logger.info(`=== Iteration ${iteration} ===`);
+
+			// Get next task
+			const currentTask = plan.getNextTask(planObj);
+
+			if (!currentTask) {
+				// No more tasks - trigger completion check
+				if (tui) {
+					tui.log("All tasks complete. Evaluating project...", "info");
+				} else {
+					console.log(
+						chalk.yellow("\nAll tasks complete. Evaluating project..."),
+					);
+				}
+
+				const isComplete = await complete.evaluate(
+					planObj.brief,
+					planObj.goal,
+					planObj,
+				);
+
+				if (isComplete) {
+					if (tui) {
+						tui.showBanner("🎉 PROJECT COMPLETE!", "success");
+					} else {
+						console.log(chalk.green.bold("\n🎉 PROJECT COMPLETE!\n"));
+					}
+
+					if (!options.perpetual) {
+						break;
+					}
+
+					// In perpetual mode, reload plan and continue
+					if (tui) {
+						tui.log("🔄 Perpetual mode: continuing...", "info");
+					} else {
+						console.log(
+							chalk.magenta("\n🔄 Perpetual mode: continuing...\n"),
+						);
+					}
+
+					// Reload plan to get new tasks
+					const reloadedPlan = await plan.load();
+					planObj.tasks = reloadedPlan.tasks;
+					continue;
+				}
+
+				// Project not complete - new tasks were added, reload and continue
+				if (tui) {
+					tui.log("✓ New tasks added to plan, continuing...", "success");
+				} else {
+					console.log(
+						chalk.green("✓ New tasks added to plan, continuing..."),
+					);
+				}
+
+				const reloadedPlan = await plan.load();
+				planObj.tasks = reloadedPlan.tasks;
+				continue;
+			}
+
+			// Log current task
+			if (tui) {
+				tui.log(`Task: ${currentTask.description}`, "info");
+				tui.updateStatus({
+					phase: currentTask.phase,
+					step: currentTask.description,
+					iteration,
+				});
+			} else {
+				console.log(chalk.cyan(`\nTask: ${currentTask.description}`));
+			}
+
+			// Execute task
+			const execResult = await exec.executeTask(
+				currentTask,
+				planObj.brief,
+				planObj.goal,
+				options,
+				tui,
+			);
+
+			// Evaluate task
+			if (tui) {
+				tui.log("Evaluating task...", "info");
+			} else {
+				console.log(chalk.yellow("Evaluating task..."));
+			}
+
+			const evalResult = await eval.evaluateTask(
+				currentTask,
+				planObj.brief,
+				planObj.goal,
+			);
+
+			if (evalResult.complete) {
+				// Mark task as complete
+				await plan.markComplete(currentTask);
+				await plan.save(planObj);
+
+				if (tui) {
+					tui.log("✓ Task complete", "success");
+				} else {
+					console.log(chalk.green("✓ Task complete"));
+				}
+			} else {
+				// Task incomplete - add feedback and retry
+				plan.addFeedback(currentTask, evalResult.feedback);
+
+				if (tui) {
+					tui.log(
+						`Task incomplete: ${evalResult.feedback}`,
+						"warn",
+					);
+					tui.log("Retrying task...", "info");
+				} else {
+					console.log(
+						chalk.yellow(`Task incomplete: ${evalResult.feedback}`),
+					);
+					console.log(chalk.yellow("Retrying task..."));
+				}
+
+				// Task will be retried in next iteration
+			}
+		}
+
+		if (tui) {
+			tui.destroy();
+		}
+	} catch (error) {
+		logger.error(`Error: ${error.message}`);
+		console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
+		if (error.stack) {
+			logger.error(error.stack);
+		}
+		process.exit(1);
+	}
+}
 
 program.parse();
