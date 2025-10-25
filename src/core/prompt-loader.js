@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
-import Mustache from "mustache";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import Mustache from "mustache";
 import logger from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);

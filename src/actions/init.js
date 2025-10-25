@@ -1,6 +1,6 @@
-import chalk from "chalk";
 import fs from "node:fs/promises";
 import path from "node:path";
+import chalk from "chalk";
 
 /**
  * Initialize .clawd/ directory structure

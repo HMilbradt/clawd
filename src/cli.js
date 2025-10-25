@@ -1,7 +1,7 @@
-import { Command } from "commander";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { Command } from "commander";
 import { initAction } from "./actions/init.js";
 import { createPluginAction, listPluginsAction } from "./actions/plugins.js";
 import { copyPromptAction, listPromptsAction } from "./actions/prompts.js";

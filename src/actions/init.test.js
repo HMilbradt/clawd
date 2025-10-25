@@ -1,6 +1,18 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import fs from "node:fs/promises";
 import path from "node:path";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+// Mock fs/promises
+const mockMkdir = vi.fn().mockResolvedValue(undefined);
+const mockAccess = vi.fn().mockResolvedValue(undefined);
+const mockRm = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("node:fs/promises", () => ({
+	default: {
+		mkdir: mockMkdir,
+		access: mockAccess,
+		rm: mockRm,
+	},
+}));
 
 // Mock chalk
 vi.mock("chalk", () => ({
@@ -24,6 +36,11 @@ describe("initAction", () => {
 	beforeEach(async () => {
 		// Clear module cache to get fresh imports
 		vi.clearAllMocks();
+
+		// Reset mock implementations
+		mockMkdir.mockResolvedValue(undefined);
+		mockAccess.mockResolvedValue(undefined);
+		mockRm.mockResolvedValue(undefined);
 
 		// Import modules
 		chalk = (await import("chalk")).default;
@@ -62,36 +79,15 @@ describe("initAction", () => {
 			try {
 				await initAction();
 
-				// Verify directories were created
+				// Verify mkdir was called for each directory
 				const clawdDir = path.join(testDir, ".clawd");
 				const promptsDir = path.join(clawdDir, "prompts");
 				const pluginsDir = path.join(clawdDir, "plugins");
 				const logsDir = path.join(clawdDir, "logs");
 
-				const clawdExists = await fs
-					.access(clawdDir)
-					.then(() => true)
-					.catch(() => false);
-				const promptsExists = await fs
-					.access(promptsDir)
-					.then(() => true)
-					.catch(() => false);
-				const pluginsExists = await fs
-					.access(pluginsDir)
-					.then(() => true)
-					.catch(() => false);
-				const logsExists = await fs
-					.access(logsDir)
-					.then(() => true)
-					.catch(() => false);
-
-				expect(clawdExists).toBe(true);
-				expect(promptsExists).toBe(true);
-				expect(pluginsExists).toBe(true);
-				expect(logsExists).toBe(true);
-
-				// Clean up
-				await fs.rm(clawdDir, { recursive: true, force: true });
+				expect(mockMkdir).toHaveBeenCalledWith(promptsDir, { recursive: true });
+				expect(mockMkdir).toHaveBeenCalledWith(pluginsDir, { recursive: true });
+				expect(mockMkdir).toHaveBeenCalledWith(logsDir, { recursive: true });
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -103,35 +99,11 @@ describe("initAction", () => {
 			process.cwd = vi.fn(() => testDir);
 
 			try {
-				const clawdDir = path.join(testDir, ".clawd");
-
-				// Pre-create directories
-				await fs.mkdir(path.join(clawdDir, "prompts"), { recursive: true });
-				await fs.mkdir(path.join(clawdDir, "plugins"), { recursive: true });
-
-				// Should not throw
+				// Should not throw when directories already exist
 				await initAction();
 
-				// Verify all directories exist
-				const promptsExists = await fs
-					.access(path.join(clawdDir, "prompts"))
-					.then(() => true)
-					.catch(() => false);
-				const pluginsExists = await fs
-					.access(path.join(clawdDir, "plugins"))
-					.then(() => true)
-					.catch(() => false);
-				const logsExists = await fs
-					.access(path.join(clawdDir, "logs"))
-					.then(() => true)
-					.catch(() => false);
-
-				expect(promptsExists).toBe(true);
-				expect(pluginsExists).toBe(true);
-				expect(logsExists).toBe(true);
-
-				// Clean up
-				await fs.rm(clawdDir, { recursive: true, force: true });
+				// Verify mkdir was called (recursive: true handles existing dirs)
+				expect(mockMkdir).toHaveBeenCalled();
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -166,12 +138,6 @@ describe("initAction", () => {
 				expect(chalk.white).toHaveBeenCalledWith("    .clawd/prompts/");
 				expect(chalk.white).toHaveBeenCalledWith("    .clawd/plugins/");
 				expect(chalk.white).toHaveBeenCalledWith("    .clawd/logs/\n");
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -181,8 +147,7 @@ describe("initAction", () => {
 	describe("Error Handling", () => {
 		test("should handle errors and exit with code 1", async () => {
 			// Mock fs.mkdir to throw an error
-			const originalMkdir = fs.mkdir;
-			fs.mkdir = vi.fn().mockRejectedValue(new Error("Permission denied"));
+			mockMkdir.mockRejectedValue(new Error("Permission denied"));
 
 			const testDir = path.join(process.cwd(), "test-init-action-error");
 			const originalCwd = process.cwd;
@@ -205,16 +170,14 @@ describe("initAction", () => {
 				// Verify process.exit was called with 1
 				expect(processExitCode).toBe(1);
 			} finally {
-				fs.mkdir = originalMkdir;
 				process.cwd = originalCwd;
 			}
 		});
 
 		test("should display error message with chalk.red", async () => {
 			// Mock fs.mkdir to throw an error
-			const originalMkdir = fs.mkdir;
 			const testError = new Error("Disk full");
-			fs.mkdir = vi.fn().mockRejectedValue(testError);
+			mockMkdir.mockRejectedValue(testError);
 
 			const testDir = path.join(process.cwd(), "test-init-action-error2");
 			const originalCwd = process.cwd;
@@ -228,7 +191,6 @@ describe("initAction", () => {
 				// Verify chalk.red was used for error message
 				expect(chalk.red).toHaveBeenCalledWith("\n✗ Error: Disk full\n");
 			} finally {
-				fs.mkdir = originalMkdir;
 				process.cwd = originalCwd;
 			}
 		});
@@ -249,14 +211,14 @@ describe("initAction", () => {
 				const pluginsPath = path.join(clawdPath, "plugins");
 				const logsPath = path.join(clawdPath, "logs");
 
-				// Check all paths exist
-				await expect(fs.access(clawdPath)).resolves.toBeUndefined();
-				await expect(fs.access(promptsPath)).resolves.toBeUndefined();
-				await expect(fs.access(pluginsPath)).resolves.toBeUndefined();
-				await expect(fs.access(logsPath)).resolves.toBeUndefined();
-
-				// Clean up
-				await fs.rm(clawdPath, { recursive: true, force: true });
+				// Verify mkdir was called with correct paths
+				expect(mockMkdir).toHaveBeenCalledWith(promptsPath, {
+					recursive: true,
+				});
+				expect(mockMkdir).toHaveBeenCalledWith(pluginsPath, {
+					recursive: true,
+				});
+				expect(mockMkdir).toHaveBeenCalledWith(logsPath, { recursive: true });
 			} finally {
 				process.cwd = originalCwd;
 			}

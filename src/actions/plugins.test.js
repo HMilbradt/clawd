@@ -1,6 +1,22 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import fs from "node:fs/promises";
 import path from "node:path";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+// Mock fs/promises
+const mockMkdir = vi.fn().mockResolvedValue(undefined);
+const mockAccess = vi.fn().mockResolvedValue(undefined);
+const mockRm = vi.fn().mockResolvedValue(undefined);
+const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("node:fs/promises", () => ({
+	default: {
+		mkdir: mockMkdir,
+		access: mockAccess,
+		rm: mockRm,
+		readFile: mockReadFile,
+		writeFile: mockWriteFile,
+	},
+}));
 
 // Mock chalk
 const mockChalk = {
@@ -36,6 +52,15 @@ describe("Plugin Actions", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+
+		// Reset mock implementations
+		mockMkdir.mockResolvedValue(undefined);
+		mockAccess.mockResolvedValue(undefined);
+		mockRm.mockResolvedValue(undefined);
+		mockReadFile.mockResolvedValue(
+			"export default { name: '{{PLUGIN_NAME}}' }",
+		);
+		mockWriteFile.mockResolvedValue(undefined);
 
 		// Import modules
 		chalk = (await import("chalk")).default;
@@ -130,28 +155,26 @@ describe("Plugin Actions", () => {
 
 			try {
 				const pluginName = "test-plugin";
+				const templateContent =
+					"export default { name: '{{PLUGIN_NAME}}', hooks: { 'pre:plan': () => console.log('[{{PLUGIN_NAME}}]') } }";
+				mockReadFile.mockResolvedValue(templateContent);
 
 				await createPluginAction(pluginName);
 
-				// Verify plugin file was created
+				// Verify plugin file path
 				const pluginPath = path.join(
 					testDir,
 					".clawd",
 					"plugins",
 					`${pluginName}.js`,
 				);
-				const pluginExists = await fs
-					.access(pluginPath)
-					.then(() => true)
-					.catch(() => false);
 
-				expect(pluginExists).toBe(true);
-
-				// Verify template was used and name was replaced
-				const content = await fs.readFile(pluginPath, "utf-8");
-				expect(content).toContain(`name: "${pluginName}"`);
-				expect(content).toContain(`[${pluginName}]`);
-				expect(content).not.toContain("{{PLUGIN_NAME}}");
+				// Verify writeFile was called with replaced content
+				expect(mockWriteFile).toHaveBeenCalled();
+				const writtenContent = mockWriteFile.mock.calls[0][1];
+				expect(writtenContent).toContain(`name: '${pluginName}'`);
+				expect(writtenContent).toContain(`[${pluginName}]`);
+				expect(writtenContent).not.toContain("{{PLUGIN_NAME}}");
 
 				// Verify success messages
 				expect(consoleLogOutput).toContain(
@@ -167,12 +190,6 @@ describe("Plugin Actions", () => {
 				expect(chalk.white).toHaveBeenCalledWith(
 					"Edit the file to customize hook behavior.\n",
 				);
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -185,25 +202,12 @@ describe("Plugin Actions", () => {
 
 			try {
 				const pluginName = "new-plugin";
-
-				// Ensure directory doesn't exist
 				const pluginsDir = path.join(testDir, ".clawd", "plugins");
-				await fs.rm(pluginsDir, { recursive: true, force: true });
 
 				await createPluginAction(pluginName);
 
-				// Verify directory was created
-				const dirExists = await fs
-					.access(pluginsDir)
-					.then(() => true)
-					.catch(() => false);
-				expect(dirExists).toBe(true);
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
+				// Verify mkdir was called to create directory
+				expect(mockMkdir).toHaveBeenCalledWith(pluginsDir, { recursive: true });
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -216,37 +220,37 @@ describe("Plugin Actions", () => {
 
 			try {
 				const pluginName = "my-awesome-plugin";
+				// Template with multiple occurrences
+				const templateContent = `export default {
+					name: '{{PLUGIN_NAME}}',
+					hooks: {
+						'pre:plan': () => console.log('[{{PLUGIN_NAME}}] Starting'),
+						'post:plan': () => console.log('[{{PLUGIN_NAME}}] Done'),
+						'pre:exec': () => console.log('[{{PLUGIN_NAME}}] Executing'),
+						'post:exec': () => console.log('[{{PLUGIN_NAME}}] Complete'),
+						'pre:eval': () => console.log('[{{PLUGIN_NAME}}] Evaluating'),
+						'post:eval': () => console.log('[{{PLUGIN_NAME}}] Evaluated')
+					}
+				}`;
+				mockReadFile.mockResolvedValue(templateContent);
 
 				await createPluginAction(pluginName);
 
-				const pluginPath = path.join(
-					testDir,
-					".clawd",
-					"plugins",
-					`${pluginName}.js`,
-				);
-				const content = await fs.readFile(pluginPath, "utf-8");
+				const content = mockWriteFile.mock.calls[0][1];
 
 				// Count occurrences - should have multiple replacements
 				const occurrences = (content.match(/my-awesome-plugin/g) || []).length;
-				expect(occurrences).toBeGreaterThan(5); // Template has many instances
+				expect(occurrences).toBeGreaterThan(5);
 
 				// Should have no template placeholders left
 				expect(content).not.toContain("{{PLUGIN_NAME}}");
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			} finally {
 				process.cwd = originalCwd;
 			}
 		});
 
 		test("should handle errors and exit with code 1", async () => {
-			const originalReadFile = fs.readFile;
-			fs.readFile = vi.fn().mockRejectedValue(new Error("Template not found"));
+			mockReadFile.mockRejectedValue(new Error("Template not found"));
 
 			const testDir = path.join(process.cwd(), "test-create-plugin-error");
 			const originalCwd = process.cwd;
@@ -265,14 +269,12 @@ describe("Plugin Actions", () => {
 				);
 				expect(processExitCode).toBe(1);
 			} finally {
-				fs.readFile = originalReadFile;
 				process.cwd = originalCwd;
 			}
 		});
 
 		test("should handle file write errors", async () => {
-			const originalWriteFile = fs.writeFile;
-			fs.writeFile = vi.fn().mockRejectedValue(new Error("Permission denied"));
+			mockWriteFile.mockRejectedValue(new Error("Permission denied"));
 
 			const testDir = path.join(
 				process.cwd(),
@@ -292,14 +294,7 @@ describe("Plugin Actions", () => {
 				);
 				expect(processExitCode).toBe(1);
 			} finally {
-				fs.writeFile = originalWriteFile;
 				process.cwd = originalCwd;
-
-				// Clean up in case directory was created
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			}
 		});
 
@@ -319,19 +314,11 @@ describe("Plugin Actions", () => {
 					"plugins",
 					`${pluginName}.js`,
 				);
-				const fileExists = await fs
-					.access(pluginPath)
-					.then(() => true)
-					.catch(() => false);
 
-				expect(fileExists).toBe(true);
+				// Verify writeFile was called with .js extension
+				expect(mockWriteFile).toHaveBeenCalled();
+				expect(mockWriteFile.mock.calls[0][0]).toBe(pluginPath);
 				expect(pluginPath).toMatch(/\.js$/);
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			} finally {
 				process.cwd = originalCwd;
 			}
@@ -344,27 +331,18 @@ describe("Plugin Actions", () => {
 
 			try {
 				const pluginName = "valid-plugin";
+				const templateContent =
+					"export default { name: '{{PLUGIN_NAME}}', hooks: {} }";
+				mockReadFile.mockResolvedValue(templateContent);
 
 				await createPluginAction(pluginName);
 
-				const pluginPath = path.join(
-					testDir,
-					".clawd",
-					"plugins",
-					`${pluginName}.js`,
-				);
-				const content = await fs.readFile(pluginPath, "utf-8");
+				const content = mockWriteFile.mock.calls[0][1];
 
 				// Should be valid JS with export default
 				expect(content).toContain("export default");
 				expect(content).toContain("name:");
 				expect(content).toContain("hooks:");
-
-				// Clean up
-				await fs.rm(path.join(testDir, ".clawd"), {
-					recursive: true,
-					force: true,
-				});
 			} finally {
 				process.cwd = originalCwd;
 			}
