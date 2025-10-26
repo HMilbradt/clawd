@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import logger from "../core/logger.js";
+import { registerProcess } from "../core/process-manager.js";
 import { LLMAdapter } from "./base.js";
 
 /**
@@ -26,6 +27,9 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 			const claude = spawn(this.command, [...this.args, "-p", prompt], {
 				stdio: ["pipe", "pipe", "pipe"],
 			});
+
+			// Register process for cleanup on exit
+			registerProcess(claude);
 
 			// Close stdin immediately - Claude doesn't need it in -p mode
 			claude.stdin.end();
@@ -104,6 +108,9 @@ export class ClaudeCodeAdapter extends LLMAdapter {
 			const claude = spawn(this.command, [...this.args, "-p", prompt], {
 				stdio: stdioConfig,
 			});
+
+			// Register process for cleanup on exit
+			registerProcess(claude);
 
 			// Close stdin immediately - Claude doesn't need it in -p mode
 			if (tui) {

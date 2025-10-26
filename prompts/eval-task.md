@@ -17,11 +17,13 @@ EVALUATION PROCESS:
    - For testing tasks: verify test files and results exist
    - Check that nothing was just "discussed" - all work must be in files
 
-2. **Run automated checks** (if applicable to the project):
-   - Run linting (e.g., `npm run lint` or `npx eslint .` or equivalent)
-   - Run tests (e.g., `npm test` or `npm run test` or equivalent)
-   - Run build (e.g., `npm run build` or equivalent)
-   - Check for type errors (e.g., `npx tsc --noEmit` if TypeScript)
+2. **Run automated checks** (REQUIRED for ALL tasks):
+   - ALWAYS check package.json for available scripts and run them
+   - Run linting (e.g., `npm run lint` or `npx eslint .` or equivalent) - MUST pass with no errors
+   - Run ALL tests (e.g., `npm test` or `npm run test` or equivalent) - MUST pass with no failures
+   - Run build (e.g., `npm run build` or equivalent) - MUST complete successfully with no errors
+   - Check for type errors (e.g., `npx tsc --noEmit` if TypeScript) - MUST pass with no errors
+   - If any of these checks fail, the task is INCOMPLETE regardless of implementation quality
 
 3. **Manual verification**:
    - Read relevant files to verify the task was implemented correctly
@@ -38,12 +40,17 @@ EVALUATION PROCESS:
 IMPORTANT:
 - If the task has no deliverable saved to disk, it is INCOMPLETE
 - Research, planning, analysis must be in docs/ folder (unless otherwise specified)
-- If any checks fail (lint errors, test failures, build errors), the task is INCOMPLETE
-- Run the actual commands to verify - don't just assume they will pass
-- Look for package.json to determine what scripts are available
-- Be thorough in your evaluation
+- If ANY checks fail (lint errors, test failures, build errors, type errors), the task is INCOMPLETE
+- You MUST run the actual commands to verify - NEVER assume they will pass
+- ALWAYS check package.json first to determine what scripts are available
+- Be thorough in your evaluation - run ALL applicable checks
 - Check that the task is actually done, not just partially done
-- Provide clear, specific feedback if incomplete, including exact error messages from failed checks
+- ALL tests, lints, and builds MUST pass before a task can be marked complete
+- Provide clear, specific feedback if incomplete, including:
+  - Exact error messages from failed checks (copy the full output)
+  - Which files are missing
+  - What specific requirements are not met
+  - Concrete steps needed to complete the task
 
 Respond in ONE of these two formats:
 

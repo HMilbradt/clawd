@@ -75,7 +75,7 @@ export async function init(userPrompt, options = {}, cwd = process.cwd()) {
  * @param {string} content - Raw plan markdown content
  * @returns {Object} - { brief, goal, tasks }
  */
-function parsePlan(content) {
+export function parsePlan(content) {
 	const lines = content.split("\n");
 
 	let brief = "";
@@ -238,4 +238,48 @@ export async function save(plan, cwd = process.cwd()) {
 
 	await fs.writeFile(planPath, updatedLines.join("\n"));
 	logger.debug("Plan file updated");
+}
+
+/**
+ * Print plan content in a readable format
+ * @param {string} planContent - Raw plan markdown content
+ * @returns {string} - Formatted plan text
+ */
+export function formatPlanForDisplay(planContent) {
+	return planContent;
+}
+
+/**
+ * Refine an existing plan based on user feedback
+ * @param {string} userPrompt - Original user prompt
+ * @param {string} currentPlanContent - Current plan content
+ * @param {string} feedback - User feedback on the plan
+ * @param {Object} options - CLI options
+ * @param {string} cwd - Working directory
+ * @returns {Promise<string>} - Refined plan content
+ */
+export async function refinePlan(
+	userPrompt,
+	currentPlanContent,
+	feedback,
+	_options = {},
+	cwd = process.cwd(),
+) {
+	logger.info("Refining plan based on user feedback...");
+
+	const prompt = await loadPrompt("plan-review", {
+		userPrompt,
+		currentPlan: currentPlanContent,
+		feedback,
+	});
+
+	const adapter = getAdapter();
+	const refinedPlanContent = await adapter.execute(prompt, true);
+
+	// Save refined plan to file
+	const planPath = path.join(cwd, PLAN_FILE);
+	await fs.writeFile(planPath, refinedPlanContent);
+	logger.info("Refined plan saved");
+
+	return refinedPlanContent;
 }

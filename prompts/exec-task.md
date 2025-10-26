@@ -17,6 +17,15 @@ Complete this specific task. Focus only on this task and ensure it is fully impl
 
 IMPORTANT: When you have completed this task, mark it as complete in the PROJECT_PLAN.md file by changing the checkbox from `- [ ]` to `- [x]` for this specific task. You must update the plan file yourself.
 
+PHASE COMPLETION REQUIREMENTS:
+Before marking any task as complete (especially the final task in a phase):
+- Run ALL tests and ensure they pass (e.g., `npm test`, `npm run test:unit`, `npm run test:e2e`)
+- Run linting and ensure no errors (e.g., `npm run lint`)
+- Run the build process and ensure it succeeds (e.g., `npm run build`)
+- Check for type errors if using TypeScript (e.g., `npx tsc --noEmit`)
+- All automated checks MUST pass before a task or phase can be considered complete
+- If you are completing the last task in a phase, verify the entire phase's deliverables are working correctly
+
 DELIVERABLE REQUIREMENTS:
 - Every task MUST produce a concrete deliverable (code, documentation, configuration, etc.)
 - Research tasks must save findings to a document
