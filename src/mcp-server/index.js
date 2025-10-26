@@ -54,7 +54,10 @@ export async function startMCPServer(port = 3000) {
 			// Handle the request (pass req.body as third parameter)
 			await transport.handleRequest(req, res, req.body);
 		} catch (error) {
-			logger.error({ stack: error.stack }, `Error handling MCP request: ${error.message}`);
+			logger.error(
+				{ stack: error.stack },
+				`Error handling MCP request: ${error.message}`,
+			);
 			if (!res.headersSent) {
 				// Return JSON-RPC error format
 				res.status(500).json({
