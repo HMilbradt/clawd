@@ -28,6 +28,7 @@ In short: **Clawd lets you use your Claude Pro subscription to build entire proj
 - **✅ Smart Evaluation** - Automatically evaluates progress and determines when tasks are complete
 - **🔌 Plugin System** - Extend Clawd with custom hooks and behaviors
 - **📝 Configurable Prompts** - Override any prompt template to customize Claude's behavior
+- **🌐 MCP Server** - Built-in Model Context Protocol server for programmatic access to Clawd (see [MCP Server Documentation](src/mcp-server/README.md))
 
 ## Prerequisites
 
@@ -108,6 +109,7 @@ export default {
 - `pre:exec` / `post:exec` - Before/after task execution
 - `pre:eval` / `post:eval` - Before/after task evaluation
 - `pre:complete` / `post:complete` - Before/after project completion check
+- `mcp:started` - When MCP server starts (receives `{ url, port, protocol }`)
 
 ### Configurable Prompts
 
@@ -287,6 +289,57 @@ export default {
 }
 ```
 
+## MCP Server
+
+When Clawd starts, it automatically launches a Model Context Protocol (MCP) server that allows other applications to interact with Clawd programmatically. This is useful for:
+
+- Building external tools that control Clawd
+- Monitoring Clawd's progress from other applications
+- Integrating Clawd into larger AI workflows
+- Creating custom dashboards or interfaces
+
+### Quick Start with MCP Inspector
+
+Test the MCP server using the official inspector:
+
+```bash
+# Start Clawd in one terminal
+clawd
+
+# In another terminal, use the port number shown in Clawd's output
+npx @modelcontextprotocol/inspector http://localhost:<port>/mcp
+```
+
+### Available MCP Tools
+
+The MCP server exposes these tools:
+
+- **get-status** - Get current execution status and progress
+- **answer-question** - Ask questions about Clawd's state
+- **queue-prompt** - Queue a new prompt for processing
+- **get-queued-prompts** - Retrieve queued prompts
+- **pause** / **resume** - Control execution
+- **toggle-perpetual** - Enable/disable perpetual mode
+
+For detailed documentation and examples, see [MCP Server Documentation](src/mcp-server/README.md).
+
+### Plugin Integration
+
+Plugins can access MCP server information via the `mcp:started` hook:
+
+```javascript
+export default {
+  name: 'mcp-logger',
+  hooks: {
+    'mcp:started': async (context) => {
+      console.log(`MCP server: ${context.protocol}://${context.url}:${context.port}`);
+      // You can now connect to the MCP server from your plugin
+      return context;
+    }
+  }
+}
+```
+
 ## Perpetual Mode
 
 Enable continuous development that never stops:
@@ -331,8 +384,9 @@ Clawd maintains detailed logs:
 ```
 clawd/
 ├── src/
-│   ├── core/              # Core modules (plan, exec, eval, complete)
+│   ├── core/              # Core modules (plan, exec, eval, complete, state)
 │   ├── plugin-system/     # Plugin loader and hook manager
+│   ├── mcp-server/        # Model Context Protocol server
 │   ├── index.js           # CLI entry point
 │   ├── prompt-loader.js   # Prompt template system
 │   ├── logger.js          # Logging system

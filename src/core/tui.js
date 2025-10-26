@@ -1,5 +1,6 @@
 import blessed from "blessed";
 import { killAllProcesses } from "./process-manager.js";
+import stateManager from "./state-manager.js";
 import { ConsoleComponent } from "./tui/console.js";
 import { HeaderComponent } from "./tui/header.js";
 import { HelpModalComponent } from "./tui/help-modal.js";
@@ -22,10 +23,18 @@ export class TUI {
 		this.promptCountBox = null;
 		this.loadingIndicator = null;
 		this.isInitialized = false;
-		this.isPaused = false;
-		this.cancelRequested = false;
-		this.perpetualMode = false;
-		this.queuedPrompts = [];
+
+		// Listen to state manager updates
+		stateManager.on("prompt:queued", (data) => {
+			this.updatePromptCount(data.count);
+		});
+		stateManager.on("prompts:cleared", (data) => {
+			this.updatePromptCount(data.count);
+		});
+		stateManager.on("perpetual:toggled", (data) => {
+			const status = data.enabled ? "enabled" : "disabled";
+			this.log(`🔄 Perpetual mode ${status}`, "info");
+		});
 	}
 
 	/**
@@ -255,10 +264,8 @@ export class TUI {
 	 * Toggle perpetual mode
 	 */
 	togglePerpetualMode() {
-		this.perpetualMode = !this.perpetualMode;
-		const status = this.perpetualMode ? "enabled" : "disabled";
-		this.log(`🔄 Perpetual mode ${status}`, "info");
-		this.screen.emit("perpetual-mode-toggled", this.perpetualMode);
+		stateManager.togglePerpetualMode();
+		this.screen.emit("perpetual-mode-toggled", stateManager.isPerpetualMode());
 	}
 
 	/**
@@ -266,7 +273,7 @@ export class TUI {
 	 * @returns {boolean} - Whether perpetual mode is enabled
 	 */
 	isPerpetualMode() {
-		return this.perpetualMode;
+		return stateManager.isPerpetualMode();
 	}
 
 	/**
@@ -274,7 +281,7 @@ export class TUI {
 	 * @param {boolean} enabled - Enable or disable perpetual mode
 	 */
 	setPerpetualMode(enabled) {
-		this.perpetualMode = enabled;
+		stateManager.setPerpetualMode(enabled);
 	}
 
 	/**
@@ -285,8 +292,7 @@ export class TUI {
 
 		const promptText = await this.prompt("Enter a prompt to queue:");
 		if (promptText?.trim()) {
-			this.queuedPrompts.push(promptText.trim());
-			this.updatePromptCount(this.queuedPrompts.length);
+			stateManager.queuePrompt(promptText.trim());
 			this.log(`✓ Queued prompt: "${promptText.trim()}"`, "success");
 		}
 	}
@@ -297,13 +303,13 @@ export class TUI {
 	async handlePause() {
 		if (!this.isInitialized) return;
 
-		this.isPaused = true;
+		stateManager.setPaused(true);
 		this.log("⏸️  Paused - Press SPACE to resume", "warn");
 
 		// Wait for another space key to resume
 		await new Promise((resolve) => {
 			const resumeHandler = () => {
-				this.isPaused = false;
+				stateManager.setPaused(false);
 				this.log("▶️  Resumed", "success");
 				this.screen.unkey(["space"], resumeHandler);
 				resolve();
@@ -317,15 +323,14 @@ export class TUI {
 	 * @returns {Array<string>} - Array of queued prompt strings
 	 */
 	getQueuedPrompts() {
-		return [...this.queuedPrompts];
+		return stateManager.getQueuedPrompts();
 	}
 
 	/**
 	 * Clear queued prompts
 	 */
 	clearQueuedPrompts() {
-		this.queuedPrompts = [];
-		this.updatePromptCount(0);
+		stateManager.clearQueuedPrompts();
 	}
 
 	/**
@@ -589,7 +594,7 @@ export class TUI {
 	async showPauseMenu() {
 		if (!this.isInitialized) return "continue";
 
-		this.isPaused = true;
+		stateManager.setPaused(true);
 		this.log("⏸️  Execution paused", "warn");
 
 		const choice = await this.select("What would you like to do?", [
@@ -598,7 +603,7 @@ export class TUI {
 			{ name: "Quit", value: "quit" },
 		]);
 
-		this.isPaused = false;
+		stateManager.setPaused(false);
 		return choice;
 	}
 
@@ -606,7 +611,7 @@ export class TUI {
 	 * Request cancellation of current task
 	 */
 	requestCancel() {
-		this.cancelRequested = true;
+		stateManager.requestCancel();
 	}
 
 	/**
@@ -614,14 +619,14 @@ export class TUI {
 	 * @returns {boolean}
 	 */
 	isCancelRequested() {
-		return this.cancelRequested;
+		return stateManager.isCancelRequested();
 	}
 
 	/**
 	 * Clear cancel request
 	 */
 	clearCancelRequest() {
-		this.cancelRequested = false;
+		stateManager.clearCancelRequest();
 	}
 
 	/**
@@ -629,7 +634,7 @@ export class TUI {
 	 * @returns {boolean}
 	 */
 	isPausedState() {
-		return this.isPaused;
+		return stateManager.isPaused;
 	}
 
 	/**
