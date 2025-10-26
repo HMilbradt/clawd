@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import hookManager from "./hooks.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import logger from "../core/logger.js";
+import hookManager from "./hooks.js";
 
 vi.mock("../core/logger.js", () => ({
 	default: {

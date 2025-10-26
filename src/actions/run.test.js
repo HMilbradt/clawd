@@ -77,6 +77,18 @@ vi.mock("../plugin-system/loader.js", () => ({
 	loadPlugins: mockLoadPlugins,
 }));
 
+// Mock fs module
+const mockFsAccess = vi.fn();
+const mockFsReadFile = vi.fn();
+vi.mock("node:fs/promises", () => ({
+	default: {
+		access: mockFsAccess,
+		readFile: mockFsReadFile,
+	},
+	access: mockFsAccess,
+	readFile: mockFsReadFile,
+}));
+
 describe("runAction", () => {
 	let runAction;
 	let originalConsoleLog;
@@ -120,6 +132,12 @@ describe("runAction", () => {
 		});
 		mockPlanGetNextTask.mockReturnValue(null); // No tasks by default
 		mockEvaluateComplete.mockResolvedValue(true); // Project complete by default
+
+		// Mock fs to make plan file appear to exist (skip plan review phase by default)
+		mockFsAccess.mockResolvedValue(undefined);
+		mockFsReadFile.mockResolvedValue(
+			"# Project Brief\nTest\n# Goal\nTest goal\n",
+		);
 	});
 
 	afterEach(() => {
@@ -155,6 +173,9 @@ describe("runAction", () => {
 		});
 
 		test("should require prompt in non-interactive mode", async () => {
+			// Make plan file NOT exist
+			mockFsAccess.mockRejectedValue(new Error("File not found"));
+
 			await expect(
 				runAction(undefined, { nonInteractive: true }),
 			).rejects.toThrow("Process exited with code 1");
@@ -196,6 +217,7 @@ describe("runAction", () => {
 				setHotkeysVisible: vi.fn(),
 				setPerpetualMode: vi.fn(),
 				isPerpetualMode: vi.fn().mockReturnValue(false),
+				waitForPlanReview: vi.fn().mockResolvedValue("accept"),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
@@ -215,6 +237,9 @@ describe("runAction", () => {
 		});
 
 		test("should prompt for user input if no prompt provided", async () => {
+			// Make plan file NOT exist
+			mockFsAccess.mockRejectedValue(new Error("File not found"));
+
 			process.exit = vi.fn();
 			const mockTUI = {
 				showBanner: vi.fn(),
@@ -225,6 +250,7 @@ describe("runAction", () => {
 				startRuntime: vi.fn(),
 				setHotkeysVisible: vi.fn(),
 				setPerpetualMode: vi.fn(),
+				waitForPlanReview: vi.fn().mockResolvedValue("accept"),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);
@@ -241,6 +267,9 @@ describe("runAction", () => {
 		});
 
 		test("should exit if user provides empty prompt", async () => {
+			// Make plan file NOT exist
+			mockFsAccess.mockRejectedValue(new Error("File not found"));
+
 			const mockTUI = {
 				showBanner: vi.fn(),
 				log: vi.fn(),
@@ -250,6 +279,7 @@ describe("runAction", () => {
 				startRuntime: vi.fn(),
 				setHotkeysVisible: vi.fn(),
 				setPerpetualMode: vi.fn(),
+				waitForPlanReview: vi.fn().mockResolvedValue("accept"),
 				destroy: vi.fn(),
 			};
 			mockInitTUI.mockReturnValue(mockTUI);

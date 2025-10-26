@@ -50,12 +50,12 @@ export class ConsoleComponent {
 
 		// Handle mouse wheel scrolling
 		this.logBox.on("wheeldown", () => {
-			this.logBox.scroll(3);
+			this.logBox.scroll(1);
 			this.screen.render();
 		});
 
 		this.logBox.on("wheelup", () => {
-			this.logBox.scroll(-3);
+			this.logBox.scroll(-1);
 			this.screen.render();
 		});
 	}

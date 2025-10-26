@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
-import { showAdapterAction, createAdapterAction } from "./adapters.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as adapterLoader from "../adapters/loader.js";
+import { createAdapterAction, showAdapterAction } from "./adapters.js";
 
 // Mock dependencies
 vi.mock("node:fs/promises");

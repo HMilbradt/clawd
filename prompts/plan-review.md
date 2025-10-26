@@ -1,8 +1,18 @@
-Create a comprehensive project plan for the following request:
+Refine the project plan based on the user's feedback.
 
+# Original User Request
 {{userPrompt}}
 
-Format the plan as follows:
+# Current Plan
+{{currentPlan}}
+
+# User Feedback
+{{feedback}}
+
+# Instructions
+Based on the user's feedback above, revise and improve the project plan. Address all concerns and suggestions mentioned in the feedback while maintaining the same format and structure.
+
+Format the refined plan as follows:
 # Project Brief
 [Brief description of what needs to be built]
 

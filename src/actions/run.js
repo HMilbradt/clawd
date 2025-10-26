@@ -1,12 +1,13 @@
-import chalk from "chalk";
 import fs from "node:fs/promises";
 import path from "node:path";
+import chalk from "chalk";
 import { loadAdapter } from "../adapters/loader.js";
 import * as complete from "../core/complete.js";
 import * as evaluate from "../core/eval.js";
 import * as exec from "../core/exec.js";
 import logger, { setLoggerTUI } from "../core/logger.js";
 import * as plan from "../core/plan.js";
+import { killAllProcesses } from "../core/process-manager.js";
 import { initTUI } from "../core/tui.js";
 import { loadPlugins } from "../plugin-system/loader.js";
 
@@ -74,10 +75,12 @@ export async function runAction(userPrompt, options) {
 				if (!userPrompt || !userPrompt.trim()) {
 					tui.log("No prompt provided. Exiting.", "error");
 					tui.destroy();
+					killAllProcesses();
 					process.exit(1);
 				}
 			} else {
 				console.error(chalk.red("\n❌ Error: Prompt is required\n"));
+				killAllProcesses();
 				process.exit(1);
 			}
 		}
@@ -98,7 +101,98 @@ export async function runAction(userPrompt, options) {
 			console.log(chalk.yellow("Initializing project plan..."));
 		}
 
-		const planObj = await plan.init(userPrompt, options);
+		let planObj = await plan.init(userPrompt, options);
+
+		// Multi-turn plan review phase (only for new plans)
+		if (!planExists) {
+			let planAccepted = false;
+
+			while (!planAccepted) {
+				// Read current plan content for display
+				const planPath = path.join(process.cwd(), "PROJECT_PLAN.md");
+				const planContent = await fs.readFile(planPath, "utf-8");
+
+				// Display the plan
+				if (tui) {
+					tui.log(`\n${"=".repeat(60)}`, "info");
+					tui.log("GENERATED PLAN:", "info");
+					tui.log(`${"=".repeat(60)}\n`, "info");
+					// Split and log each line of the plan
+					for (const line of planContent.split("\n")) {
+						tui.log(line, "info");
+					}
+					tui.log(`\n${"=".repeat(60)}\n`, "info");
+				} else {
+					console.log(chalk.blue(`\n${"=".repeat(60)}`));
+					console.log(chalk.bold.blue("GENERATED PLAN:"));
+					console.log(chalk.blue(`${"=".repeat(60)}\n`));
+					console.log(planContent);
+					console.log(chalk.blue(`\n${"=".repeat(60)}\n`));
+				}
+
+				// Get user decision
+				let userChoice;
+				if (tui) {
+					userChoice = await tui.waitForPlanReview();
+				} else {
+					// Non-interactive mode - accept by default
+					userChoice = "accept";
+				}
+
+				if (userChoice === "accept") {
+					planAccepted = true;
+					if (tui) {
+						tui.log("✓ Plan accepted", "success");
+					} else {
+						console.log(chalk.green("✓ Plan accepted"));
+					}
+				} else if (userChoice === "feedback") {
+					let feedback;
+					if (tui) {
+						feedback = await tui.prompt("Enter your feedback on the plan:");
+					}
+
+					if (feedback?.trim()) {
+						if (tui) {
+							tui.log("Refining plan based on feedback...", "info");
+						} else {
+							console.log(chalk.yellow("Refining plan based on feedback..."));
+						}
+
+						// Refine the plan
+						const refinedPlanContent = await plan.refinePlan(
+							userPrompt,
+							planContent,
+							feedback,
+							options,
+						);
+
+						// Parse the refined plan
+						planObj = plan.parsePlan(refinedPlanContent);
+
+						if (tui) {
+							tui.log("✓ Plan refined", "success");
+						} else {
+							console.log(chalk.green("✓ Plan refined"));
+						}
+					} else {
+						if (tui) {
+							tui.log("No feedback provided, accepting current plan", "warn");
+						}
+						planAccepted = true;
+					}
+				} else if (userChoice === "cancel") {
+					if (tui) {
+						tui.log("Plan review cancelled. Exiting.", "error");
+						tui.destroy();
+					} else {
+						console.log(chalk.red("\nPlan review cancelled. Exiting.\n"));
+					}
+					killAllProcesses();
+					process.exit(0);
+				}
+			}
+		}
 
 		if (tui) {
 			tui.log("✓ Plan loaded", "success");
@@ -279,6 +373,7 @@ export async function runAction(userPrompt, options) {
 		if (error.stack) {
 			logger.error(error.stack);
 		}
+		killAllProcesses();
 		process.exit(1);
 	}
 }

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
+import { copyPromptToUser, listPrompts } from "../core/prompt-loader.js";
 
 /**
  * Initialize .clawd/ directory structure
@@ -21,6 +22,21 @@ export async function initAction() {
 		console.log(chalk.white("    .clawd/prompts/"));
 		console.log(chalk.white("    .clawd/plugins/"));
 		console.log(chalk.white("    .clawd/logs/\n"));
+
+		// Copy all built-in prompts to .clawd/prompts/
+		console.log(chalk.blue("Copying built-in prompts...\n"));
+		const prompts = await listPrompts();
+		for (const promptName of prompts.builtIn) {
+			try {
+				await copyPromptToUser(promptName);
+				console.log(chalk.green(`  ✓ Copied ${promptName}.md`));
+			} catch (error) {
+				console.log(
+					chalk.yellow(`  ⚠ Failed to copy ${promptName}: ${error.message}`),
+				);
+			}
+		}
+		console.log(chalk.green("\n✓ All prompts copied to .clawd/prompts/\n"));
 	} catch (error) {
 		console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
 		process.exit(1);

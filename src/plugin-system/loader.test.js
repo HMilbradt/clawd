@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
-import path from "node:path";
 import os from "node:os";
-import { loadPlugins, listPlugins } from "./loader.js";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import logger from "../core/logger.js";
 import hookManager from "./hooks.js";
+import { listPlugins, loadPlugins } from "./loader.js";
 
 vi.mock("../core/logger.js", () => ({
 	default: {

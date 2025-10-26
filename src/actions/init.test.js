@@ -20,7 +20,21 @@ vi.mock("chalk", () => ({
 		green: vi.fn((text) => text),
 		white: vi.fn((text) => text),
 		red: vi.fn((text) => text),
+		blue: vi.fn((text) => text),
+		yellow: vi.fn((text) => text),
 	},
+}));
+
+// Mock prompt-loader
+const mockListPrompts = vi.fn().mockResolvedValue({
+	builtIn: ["plan-init", "exec-task", "eval-task", "complete-project"],
+	userOverrides: [],
+});
+const mockCopyPromptToUser = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("../core/prompt-loader.js", () => ({
+	listPrompts: mockListPrompts,
+	copyPromptToUser: mockCopyPromptToUser,
 }));
 
 describe("initAction", () => {
@@ -41,6 +55,11 @@ describe("initAction", () => {
 		mockMkdir.mockResolvedValue(undefined);
 		mockAccess.mockResolvedValue(undefined);
 		mockRm.mockResolvedValue(undefined);
+		mockListPrompts.mockResolvedValue({
+			builtIn: ["plan-init", "exec-task", "eval-task", "complete-project"],
+			userOverrides: [],
+		});
+		mockCopyPromptToUser.mockResolvedValue(undefined);
 
 		// Import modules
 		chalk = (await import("chalk")).default;

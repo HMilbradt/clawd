@@ -1,4 +1,5 @@
 import blessed from "blessed";
+import { killAllProcesses } from "./process-manager.js";
 import { ConsoleComponent } from "./tui/console.js";
 import { HeaderComponent } from "./tui/header.js";
 import { HelpModalComponent } from "./tui/help-modal.js";
@@ -103,6 +104,7 @@ export class TUI {
 		// Handle Ctrl+C
 		this.screen.key(["C-c"], () => {
 			this.destroy();
+			killAllProcesses();
 			process.exit(0);
 		});
 
@@ -643,9 +645,76 @@ export class TUI {
 	}
 
 	/**
+	 * Wait for plan review decision using hotkeys
+	 * Shows a temporary hotkey bar and waits for user to press a, f, or c
+	 * @returns {Promise<string>} - 'accept', 'feedback', or 'cancel'
+	 */
+	async waitForPlanReview() {
+		if (!this.isInitialized) return "accept";
+
+		return new Promise((resolve) => {
+			// Create temporary hotkey instruction box
+			const hotkeyBox = blessed.box({
+				parent: this.screen,
+				bottom: 0,
+				left: 0,
+				width: "100%",
+				height: 3,
+				content:
+					"{bold}Plan Review:{/bold} [A]ccept and proceed  |  [F]eedback  |  [C]ancel",
+				tags: true,
+				align: "center",
+				valign: "middle",
+				style: {
+					fg: "white",
+					bg: "blue",
+					bold: true,
+				},
+			});
+
+			// Handler for accept
+			const acceptHandler = () => {
+				cleanup();
+				resolve("accept");
+			};
+
+			// Handler for feedback
+			const feedbackHandler = () => {
+				cleanup();
+				resolve("feedback");
+			};
+
+			// Handler for cancel
+			const cancelHandler = () => {
+				cleanup();
+				resolve("cancel");
+			};
+
+			// Cleanup function to remove handlers and box
+			const cleanup = () => {
+				this.screen.unkey(["a", "A"], acceptHandler);
+				this.screen.unkey(["f", "F"], feedbackHandler);
+				this.screen.unkey(["c", "C"], cancelHandler);
+				hotkeyBox.destroy();
+				this.screen.render();
+			};
+
+			// Register key handlers
+			this.screen.key(["a", "A"], acceptHandler);
+			this.screen.key(["f", "F"], feedbackHandler);
+			this.screen.key(["c", "C"], cancelHandler);
+
+			this.screen.render();
+		});
+	}
+
+	/**
 	 * Destroy the TUI and restore terminal
 	 */
 	destroy() {
+		// Kill all child processes before destroying TUI
+		killAllProcesses();
+
 		if (this.header) {
 			this.header.destroy();
 		}
