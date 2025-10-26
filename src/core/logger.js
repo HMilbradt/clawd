@@ -32,7 +32,13 @@ class TUIDestination {
 				60: "error", // fatal
 			};
 
-			const formattedMessage = `${timestamp} ${pino.levels.labels[level]}: ${message}`;
+			// Build formatted message with stack trace if present
+			let formattedMessage = `${timestamp} ${pino.levels.labels[level]}: ${message}`;
+
+			// Add stack trace for error logs if available
+			if (log.stack) {
+				formattedMessage += `\n${log.stack}`;
+			}
 
 			if (this.tui) {
 				this.tui.log(formattedMessage, levelMap[level] || "info");

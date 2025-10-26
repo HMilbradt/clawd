@@ -19,6 +19,7 @@ class HookManager {
 			"post:eval",
 			"pre:complete",
 			"post:complete",
+			"mcp:started",
 		];
 	}
 

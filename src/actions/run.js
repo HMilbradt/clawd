@@ -7,14 +7,18 @@ import * as evaluate from "../core/eval.js";
 import * as exec from "../core/exec.js";
 import logger, { setLoggerTUI } from "../core/logger.js";
 import * as plan from "../core/plan.js";
-import { killAllProcesses } from "../core/process-manager.js";
+import { killAllProcesses, registerProcess } from "../core/process-manager.js";
+import stateManager from "../core/state-manager.js";
 import { initTUI } from "../core/tui.js";
+import { startMCPServer, stopMCPServer } from "../mcp-server/index.js";
 import { loadPlugins } from "../plugin-system/loader.js";
 
 /**
  * Main execution function
  */
 export async function runAction(userPrompt, options) {
+	let mcpServerInfo = null;
+
 	try {
 		const interactive = !options.nonInteractive;
 
@@ -29,9 +33,38 @@ export async function runAction(userPrompt, options) {
 			// Set perpetual mode from options if provided
 			if (options.perpetual) {
 				tui.setPerpetualMode(true);
+				stateManager.setPerpetualMode(true);
 			}
 		} else {
 			console.log(chalk.bold.blue("\n🤖 Clawd - Claude Code Orchestrator\n"));
+		}
+
+		// Start MCP server
+		if (tui) {
+			tui.log("Starting MCP server...", "info");
+		}
+		mcpServerInfo = await startMCPServer();
+		if (tui) {
+			tui.log(
+				`✓ MCP server running at ${mcpServerInfo.protocol}://${mcpServerInfo.url}:${mcpServerInfo.port}`,
+				"success",
+			);
+		} else {
+			console.log(
+				chalk.green(
+					`✓ MCP server running at ${mcpServerInfo.protocol}://${mcpServerInfo.url}:${mcpServerInfo.port}`,
+				),
+			);
+		}
+		// Register the HTTP server as a "process" for cleanup
+		if (mcpServerInfo.httpServer) {
+			// Wrap the HTTP server to make it compatible with process manager
+			const wrappedServer = {
+				kill: () => mcpServerInfo.httpServer.close(),
+				killed: false,
+				on: (event, handler) => mcpServerInfo.httpServer.on(event, handler),
+			};
+			registerProcess(wrappedServer);
 		}
 
 		// Load LLM adapter
@@ -102,6 +135,9 @@ export async function runAction(userPrompt, options) {
 		}
 
 		let planObj = await plan.init(userPrompt, options);
+
+		// Update state manager with plan
+		stateManager.setPlan(planObj);
 
 		// Multi-turn plan review phase (only for new plans)
 		if (!planExists) {
@@ -216,12 +252,17 @@ export async function runAction(userPrompt, options) {
 		// Main execution loop
 		let iteration = 0;
 
+		// Set execution state
+		stateManager.setRunning(true);
+
 		while (true) {
 			iteration++;
 			logger.info(`=== Iteration ${iteration} ===`);
+			stateManager.setIteration(iteration);
 
 			// Get next task
 			const currentTask = plan.getNextTask(planObj);
+			stateManager.setCurrentTask(currentTask);
 
 			if (!currentTask) {
 				// No more tasks - trigger completion check
@@ -265,6 +306,7 @@ export async function runAction(userPrompt, options) {
 					// Reload plan to get new tasks
 					const reloadedPlan = await plan.load();
 					planObj.tasks = reloadedPlan.tasks;
+					stateManager.setPlan(planObj);
 
 					// Update step counts after reload
 					if (tui) {
@@ -286,6 +328,7 @@ export async function runAction(userPrompt, options) {
 
 				const reloadedPlan = await plan.load();
 				planObj.tasks = reloadedPlan.tasks;
+				stateManager.setPlan(planObj);
 
 				// Update step counts after reload
 				if (tui) {
@@ -367,12 +410,27 @@ export async function runAction(userPrompt, options) {
 		if (tui) {
 			tui.destroy();
 		}
+
+		// Stop MCP server
+		if (mcpServerInfo) {
+			await stopMCPServer(mcpServerInfo);
+		}
 	} catch (error) {
 		logger.error(`Error: ${error.message}`);
 		console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
 		if (error.stack) {
 			logger.error(error.stack);
 		}
+
+		// Ensure MCP server is stopped on error
+		if (mcpServerInfo) {
+			try {
+				await stopMCPServer(mcpServerInfo);
+			} catch (stopError) {
+				logger.error(`Error stopping MCP server: ${stopError.message}`);
+			}
+		}
+
 		killAllProcesses();
 		process.exit(1);
 	}
