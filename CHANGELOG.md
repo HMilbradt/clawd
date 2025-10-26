@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/HMilbradt/clawd/compare/v1.0.2...v1.1.0) (2025-10-26)
+
+
+### Features
+
+* add mcp server ([#6](https://github.com/HMilbradt/clawd/issues/6)) ([4bfb27e](https://github.com/HMilbradt/clawd/commit/4bfb27e46460f465cb5633022e2fab79f0dbaefa))
+
 ## [1.0.2](https://github.com/HMilbradt/clawd/compare/v1.0.1...v1.0.2) (2025-10-25)
 
 
