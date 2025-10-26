@@ -35,7 +35,7 @@ export function killAllProcesses() {
 			if (!proc.killed) {
 				proc.kill("SIGTERM");
 			}
-		} catch (error) {
+		} catch (_error) {
 			// Process may have already exited, ignore errors
 		}
 	}
