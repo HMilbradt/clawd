@@ -342,7 +342,6 @@ export async function runAction(userPrompt, options) {
 
 				// Project not complete - new tasks were added, reload and continue
 				const reloadedPlan = await plan.load();
-				const newTaskCount = reloadedPlan.tasks.filter((t) => !t.done).length;
 
 				// Notify new tasks added
 				notifier.notifyProjectCompletion(false, reloadedPlan.tasks.filter((t) => !t.done));
