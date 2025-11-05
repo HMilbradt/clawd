@@ -344,7 +344,10 @@ export async function runAction(userPrompt, options) {
 				const reloadedPlan = await plan.load();
 
 				// Notify new tasks added
-				notifier.notifyProjectCompletion(false, reloadedPlan.tasks.filter((t) => !t.done));
+				notifier.notifyProjectCompletion(
+					false,
+					reloadedPlan.tasks.filter((t) => !t.done),
+				);
 
 				if (tui) {
 					tui.log("✓ New tasks added to plan, continuing...", "success");
