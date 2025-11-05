@@ -12,6 +12,7 @@ import stateManager from "../core/state-manager.js";
 import { initTUI } from "../core/tui.js";
 import { startMCPServer, stopMCPServer } from "../mcp-server/index.js";
 import { loadPlugins } from "../plugin-system/loader.js";
+import { getNotifier } from "../core/notifier.js";
 
 /**
  * Main execution function
@@ -21,6 +22,23 @@ export async function runAction(userPrompt, options) {
 
 	try {
 		const interactive = !options.nonInteractive;
+
+		// Initialize notifier
+		const notifier = getNotifier({
+			enabled: options.notifications !== false,
+			sound: options.notificationSound !== false,
+		});
+
+		// Set up notification event listeners
+		stateManager.on("execution:paused", (data) => {
+			if (data.isPaused) {
+				notifier.notifyPaused();
+			}
+		});
+
+		stateManager.on("execution:cancel", () => {
+			notifier.notifyCancelled();
+		});
 
 		// Initialize TUI if in interactive mode
 		let tui = null;
@@ -281,6 +299,9 @@ export async function runAction(userPrompt, options) {
 				);
 
 				if (isComplete) {
+					// Notify project completion
+					notifier.notifyProjectCompletion(true);
+
 					if (tui) {
 						tui.showBanner("🎉 PROJECT COMPLETE!", "success");
 					} else {
@@ -320,13 +341,18 @@ export async function runAction(userPrompt, options) {
 				}
 
 				// Project not complete - new tasks were added, reload and continue
+				const reloadedPlan = await plan.load();
+				const newTaskCount = reloadedPlan.tasks.filter((t) => !t.done).length;
+
+				// Notify new tasks added
+				notifier.notifyProjectCompletion(false, reloadedPlan.tasks.filter((t) => !t.done));
+
 				if (tui) {
 					tui.log("✓ New tasks added to plan, continuing...", "success");
 				} else {
 					console.log(chalk.green("✓ New tasks added to plan, continuing..."));
 				}
 
-				const reloadedPlan = await plan.load();
 				planObj.tasks = reloadedPlan.tasks;
 				stateManager.setPlan(planObj);
 
@@ -380,6 +406,9 @@ export async function runAction(userPrompt, options) {
 				await plan.markComplete(currentTask);
 				await plan.save(planObj);
 
+				// Notify task completion
+				notifier.notifyTaskComplete(currentTask, true);
+
 				if (tui) {
 					tui.log("✓ Task complete", "success");
 					// Update steps complete count
@@ -416,6 +445,10 @@ export async function runAction(userPrompt, options) {
 			await stopMCPServer(mcpServerInfo);
 		}
 	} catch (error) {
+		// Notify error
+		const notifier = getNotifier();
+		notifier.notifyError(error, "Execution");
+
 		logger.error(`Error: ${error.message}`);
 		console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
 		if (error.stack) {

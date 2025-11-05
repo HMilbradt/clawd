@@ -26,6 +26,7 @@ In short: **Clawd lets you use your Claude Pro subscription to build entire proj
 - **♾️ Perpetual Mode** - Continuously researches and adds new features when projects complete
 - **🖥️ Interactive TUI** - Full terminal interface with scrollable logs, keyboard controls, and live prompting
 - **✅ Smart Evaluation** - Automatically evaluates progress and determines when tasks are complete
+- **🔔 Desktop Notifications** - Get notified when tasks complete, projects finish, or errors occur
 - **🔌 Plugin System** - Extend Clawd with custom hooks and behaviors
 - **📝 Configurable Prompts** - Override any prompt template to customize Claude's behavior
 - **🌐 MCP Server** - Built-in Model Context Protocol server for programmatic access to Clawd (see [MCP Server Documentation](src/mcp-server/README.md))
@@ -151,6 +152,8 @@ clawd [prompt] [options]
 **Options:**
 - `-p, --perpetual` - Enable perpetual mode (continuously add features)
 - `--non-interactive` - Disable terminal UI, use standard output
+- `--no-notifications` - Disable desktop notifications
+- `--no-notification-sound` - Disable notification sounds (notifications will still appear)
 
 **Examples:**
 ```bash
@@ -158,6 +161,7 @@ clawd                                    # Interactive mode with prompt
 clawd "Build a task manager"             # Direct prompt
 clawd --non-interactive "Build an API"   # Non-interactive mode
 clawd -p "Build a blog"                  # Perpetual mode
+clawd --no-notifications "Build an app"  # Disable notifications
 ```
 
 ### Prompts Management
@@ -339,6 +343,29 @@ export default {
   }
 }
 ```
+
+## Desktop Notifications
+
+Clawd includes built-in desktop notifications to keep you informed when Claude completes tasks. By default, notifications are enabled and will alert you when:
+
+- **Task Complete** - A task finishes successfully
+- **Project Complete** - All tasks are finished and the project is complete
+- **New Tasks Added** - Claude adds new tasks to the plan after completion evaluation
+- **Execution Paused** - Execution is paused (via `SPACE` key)
+- **Execution Cancelled** - Execution is cancelled (via `ESC` key)
+- **Error Occurs** - An error occurs during execution
+
+**Controlling Notifications:**
+
+```bash
+# Disable all notifications
+clawd --no-notifications "Build an API"
+
+# Keep notifications but disable sounds
+clawd --no-notification-sound "Build an API"
+```
+
+Notifications work cross-platform on macOS, Windows, and Linux. They appear as native system notifications and are perfect for letting you step away from your desk while Clawd works.
 
 ## Perpetual Mode
 

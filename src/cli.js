@@ -35,6 +35,14 @@ program
 		"--non-interactive",
 		"Disable terminal UI and run in standard output mode",
 	)
+	.option(
+		"--no-notifications",
+		"Disable desktop notifications for task completion",
+	)
+	.option(
+		"--no-notification-sound",
+		"Disable notification sounds (notifications will still appear)",
+	)
 	.action(async (userPrompt, options) => {
 		await runAction(userPrompt, options);
 	});
