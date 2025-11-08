@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/HMilbradt/clawd/compare/v1.1.0...v1.2.0) (2025-11-08)
+
+
+### Features
+
+* add notification sound ([#7](https://github.com/HMilbradt/clawd/issues/7)) ([5ae4d3b](https://github.com/HMilbradt/clawd/commit/5ae4d3b4e2912cdf12e0ed791c8a11b35828c61c))
+
 # [1.1.0](https://github.com/HMilbradt/clawd/compare/v1.0.2...v1.1.0) (2025-10-26)
 
 
