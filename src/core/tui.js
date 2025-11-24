@@ -666,7 +666,7 @@ export class TUI {
 				width: "100%",
 				height: 3,
 				content:
-					"{bold}Plan Review:{/bold} [A]ccept and proceed  |  [F]eedback  |  [C]ancel",
+					"{bold}Plan Review:{/bold} [A]ccept and proceed  |  [F]eedback  |  [C]ancel / [ESC]",
 				tags: true,
 				align: "center",
 				valign: "middle",
@@ -700,6 +700,7 @@ export class TUI {
 				this.screen.unkey(["a", "A"], acceptHandler);
 				this.screen.unkey(["f", "F"], feedbackHandler);
 				this.screen.unkey(["c", "C"], cancelHandler);
+				this.screen.unkey(["escape"], cancelHandler);
 				hotkeyBox.destroy();
 				this.screen.render();
 			};
@@ -708,6 +709,7 @@ export class TUI {
 			this.screen.key(["a", "A"], acceptHandler);
 			this.screen.key(["f", "F"], feedbackHandler);
 			this.screen.key(["c", "C"], cancelHandler);
+			this.screen.key(["escape"], cancelHandler);
 
 			this.screen.render();
 		});
