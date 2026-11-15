@@ -511,20 +511,25 @@ export default class OpenAIAdapter extends LLMAdapter {
 }
 ```
 
-**Local Ollama:**
+**Anthropic API:**
 ```javascript
-export default class OllamaAdapter extends LLMAdapter {
+export default class AnthropicAdapter extends LLMAdapter {
   async execute(prompt) {
-    const response = await fetch('http://localhost:11434/api/generate', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        model: 'codellama',
-        prompt: prompt,
-        stream: false
+        model: 'claude-sonnet-5-5',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
       })
     });
     const data = await response.json();
-    return data.response;
+    return data.content[0].text;
   }
 }
 ```

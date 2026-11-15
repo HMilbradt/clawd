@@ -8,7 +8,7 @@ import { LLMAdapter } from "../src/adapters/base.js";
  *
  * Example use cases:
  * - Use OpenAI API instead of Claude Code
- * - Use local LLM (Ollama, LM Studio, etc.)
+ * - Use another hosted model API (Anthropic, Gemini, etc.)
  * - Use Azure OpenAI
  * - Add custom pre/post-processing
  */
