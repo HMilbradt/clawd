@@ -519,7 +519,7 @@ export default class AnthropicAdapter extends LLMAdapter {
       method: 'POST',
       headers: {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2026-10-21',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -529,7 +529,15 @@ export default class AnthropicAdapter extends LLMAdapter {
       })
     });
     const data = await response.json();
-    return data.content[0].text;
+    if (!response.ok) {
+      throw new Error(data.error?.message || response.statusText);
+    }
+    // Current models can return a thinking block before the text block.
+    const text = data.content?.find((block) => block.type === 'text')?.text;
+    if (!text) {
+      throw new Error('Anthropic response did not include a text block');
+    }
+    return text;
   }
 }
 ```

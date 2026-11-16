@@ -19,6 +19,26 @@ export async function dynamicImport(url) {
 }
 
 /**
+ * Turn a module export into an adapter instance.
+ * Documented adapters use `export default class`, which must be constructed.
+ * Factory functions are called, and an already-built instance is returned as-is.
+ * @param {Function|object} exported - Default export or createAdapter
+ * @returns {object}
+ */
+export function instantiateExport(exported) {
+	if (typeof exported !== "function") {
+		return exported;
+	}
+
+	const source = Function.prototype.toString.call(exported);
+	if (source.startsWith("class")) {
+		return new exported();
+	}
+
+	return exported();
+}
+
+/**
  * Load adapter from .clawd/adapter.js or use default
  * @param {string} cwd - Working directory
  * @param {Function} importFn - Import function (for testing)
@@ -42,13 +62,9 @@ export async function loadAdapter(
 
 		// Get the default export or createAdapter function
 		if (adapterModule.default) {
-			if (typeof adapterModule.default === "function") {
-				currentAdapter = adapterModule.default();
-			} else {
-				currentAdapter = adapterModule.default;
-			}
+			currentAdapter = instantiateExport(adapterModule.default);
 		} else if (adapterModule.createAdapter) {
-			currentAdapter = adapterModule.createAdapter();
+			currentAdapter = instantiateExport(adapterModule.createAdapter);
 		} else {
 			throw new Error(
 				"Custom adapter must export default or createAdapter function",
